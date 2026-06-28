@@ -111,16 +111,19 @@ class CodeArchaeologistSynthesizer:
 
     def generate_briefing(self, stats: dict, top_files: List[tuple], recent_commits: List[dict]) -> str:
         """Generates an auto-generated structural and historical 'Archaeologist's Briefing' on load."""
+        files_str = "\n".join([f"- `{f[0]}` ({f[1]} chunks)" for f in top_files[:3]])
+        commits_str = "\n".join([f"- `[{c['commit_hash'] if isinstance(c, dict) else c.commit_hash}]` {c['message'][:60] if isinstance(c, dict) else c.message[:60]}" for c in recent_commits[:3]])
+        
+        offline_briefing = (
+            "### 🏛️ Repository Excavation Briefing (Offline)\n\n"
+            f"**Mined Commits**: {stats.get('commits_mined', 0)} | **AST Chunks**: {stats.get('chunks_indexed', 0)}\n\n"
+            f"#### Top Active Files:\n{files_str}\n\n"
+            f"#### Recent Commits Mined:\n{commits_str}\n\n"
+            "*(Note: Export GEMINI_API_KEY for a deep, AI-synthesized architectural summary!)*"
+        )
+        
         if not self.llm or self.provider != "gemini":
-            files_str = "\n".join([f"- `{f[0]}` ({f[1]} chunks)" for f in top_files[:3]])
-            commits_str = "\n".join([f"- `[{c['commit_hash'] if isinstance(c, dict) else c.commit_hash}]` {c['message'][:60] if isinstance(c, dict) else c.message[:60]}" for c in recent_commits[:3]])
-            return (
-                "### 🏛️ Repository Excavation Briefing (Offline)\n\n"
-                f"**Mined Commits**: {stats.get('commits_mined', 0)} | **AST Chunks**: {stats.get('chunks_indexed', 0)}\n\n"
-                f"#### Top Active Files:\n{files_str}\n\n"
-                f"#### Recent Commits Mined:\n{commits_str}\n\n"
-                "*(Note: Export GEMINI_API_KEY for a deep, AI-synthesized architectural summary!)*"
-            )
+            return offline_briefing
             
         top_files_text = "\n".join([f"- {f[0]} ({f[1]} AST chunks)" for f in top_files])
         commits_text = "\n".join([f"- [{c['commit_hash'] if isinstance(c, dict) else c.commit_hash}] by {c['author'] if isinstance(c, dict) else c.author}: {c['message'] if isinstance(c, dict) else c.message}" for c in recent_commits[:5]])
@@ -136,7 +139,7 @@ class CodeArchaeologistSynthesizer:
         )
         
         import time
-        for attempt in range(3):
+        for attempt in range(4):
             try:
                 response = self.llm.models.generate_content(
                     model=settings.GEMINI_MODEL,
@@ -144,22 +147,31 @@ class CodeArchaeologistSynthesizer:
                 )
                 return response.text
             except Exception as e:
-                if attempt < 2:
-                    time.sleep(1.5 ** attempt)
+                if attempt < 3:
+                    time.sleep(2.0 ** attempt)
                 else:
-                    return f"Error generating AI briefing: {e}"
+                    # Fallback to offline briefing with a warning note
+                    return (
+                        "### 🏛️ Repository Excavation Briefing (Offline Fallback)\n\n"
+                        "⚠️ *Gemini API is temporarily experiencing high demand (503). Showing local fallback briefing:*\n\n"
+                        f"**Mined Commits**: {stats.get('commits_mined', 0)} | **AST Chunks**: {stats.get('chunks_indexed', 0)}\n\n"
+                        f"#### Top Active Files:\n{files_str}\n\n"
+                        f"#### Recent Commits Mined:\n{commits_str}"
+                    )
 
     def explain_diff(self, file_path: str, commit_a: str, commit_b: str, diff_content: str) -> str:
         """Explains a Git diff in natural language."""
         if not diff_content.strip() or diff_content.startswith("Error retrieving diff"):
             return "No valid diff content to analyze."
             
+        offline_explanation = (
+            "### 🔍 Diff Explanation (Offline fallback)\n\n"
+            "**Offline Mode**: Export a live API key to get a deep semantic explanation of the changes.\n\n"
+            f"Showing raw diff characters length: {len(diff_content)}"
+        )
+        
         if not self.llm or self.provider != "gemini":
-            return (
-                "### 🔍 Diff Explanation (Offline fallback)\n\n"
-                "**Offline Mode**: Export a live API key to get a deep semantic explanation of the changes.\n\n"
-                f"Showing raw diff characters length: {len(diff_content)}"
-            )
+            return offline_explanation
             
         prompt = (
             "You are a senior software engineer conducting a code review and auditing git history. "
@@ -172,7 +184,7 @@ class CodeArchaeologistSynthesizer:
         )
         
         import time
-        for attempt in range(3):
+        for attempt in range(4):
             try:
                 response = self.llm.models.generate_content(
                     model=settings.GEMINI_MODEL,
@@ -180,7 +192,11 @@ class CodeArchaeologistSynthesizer:
                 )
                 return response.text
             except Exception as e:
-                if attempt < 2:
-                    time.sleep(1.5 ** attempt)
+                if attempt < 3:
+                    time.sleep(2.0 ** attempt)
                 else:
-                    return f"Error generating AI diff explanation: {e}"
+                    return (
+                        "### 🔍 Diff Explanation (Offline Fallback)\n\n"
+                        "⚠️ *Gemini API is temporarily experiencing high demand (503). Showing raw git diff:*\n\n"
+                        f"```diff\n{diff_content[:2000]}\n```"
+                    )
