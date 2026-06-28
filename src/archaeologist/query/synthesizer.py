@@ -112,7 +112,18 @@ class CodeArchaeologistSynthesizer:
     def generate_briefing(self, stats: dict, top_files: List[tuple], recent_commits: List[dict]) -> str:
         """Generates an auto-generated structural and historical 'Archaeologist's Briefing' on load."""
         files_str = "\n".join([f"- `{f[0]}` ({f[1]} chunks)" for f in top_files[:3]])
-        commits_str = "\n".join([f"- `[{c['commit_hash'] if isinstance(c, dict) else c.commit_hash}]` {c['message'][:60] if isinstance(c, dict) else c.message[:60]}" for c in recent_commits[:3]])
+        
+        # Clean up commit messages (use only the first line/subject and filter empty)
+        cleaned_commits = []
+        for c in recent_commits:
+            h = c['commit_hash'] if isinstance(c, dict) else c.commit_hash
+            msg = c['message'] if isinstance(c, dict) else c.message
+            if h and msg:
+                subject = msg.split('\n')[0].strip()
+                cleaned_commits.append(f"- `[{h}]` {subject[:60]}")
+                if len(cleaned_commits) >= 3:
+                    break
+        commits_str = "\n".join(cleaned_commits)
         
         offline_briefing = (
             "### 🏛️ Repository Excavation Briefing (Offline)\n\n"
