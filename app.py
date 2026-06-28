@@ -165,9 +165,13 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+@st.cache_resource
+def get_retriever():
+    return CodebaseRetriever()
+
 # Initialize Session State
 if "retriever" not in st.session_state:
-    st.session_state.retriever = CodebaseRetriever()
+    st.session_state.retriever = get_retriever()
 
 # Auto-detect cached database
 if "ingested" not in st.session_state:
