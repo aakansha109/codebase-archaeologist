@@ -202,33 +202,7 @@ def render_evidence_card(ev):
     with st.expander("👁️ View Source Code Snippet", expanded=False):
         st.code(ev.content, language=ev.language)
 
-def excavate_repository_inline(target_url: str):
-    st.session_state.repo_input_val = target_url
-    error_msg = None
-    with st.status(f" Excavating repository {target_url}...", expanded=True) as status:
-        try:
-            st.write("Cloning repository & mining Git commit lineage...")
-            stats = st.session_state.retriever.ingest_repository(
-                target_url,
-                progress_callback=lambda m: st.write(f"⏳ {m}")
-            )
-            st.session_state.stats = stats
-            st.session_state.ingested = True
-            # Clear stale cache and logs from previous repository excavations
-            st.session_state.pop("briefing", None)
-            st.session_state.chat_history = []
-            st.session_state.last_results = []
-            st.session_state.nav_page = "⛏️ Excavation Workspace"
-            status.update(label="✔ Excavation Complete!", state="complete", expanded=False)
-        except Exception as e:
-            status.update(label="❌ Excavation Failed", state="error", expanded=False)
-            error_msg = str(e)
-            
-    if error_msg:
-        st.error(f"Failed to index repository: {error_msg}")
-    elif st.session_state.ingested:
-        st.success("Codebase successfully indexed into Qdrant!")
-        st.rerun()
+
 
 # Initialize Session State
 if "retriever" not in st.session_state:
@@ -416,42 +390,7 @@ if st.session_state.nav_page == "🏠 Welcome Hub":
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("---")
-    
-    # Quick Load Section
-    st.markdown("### 🚀 Demo Excavations")
-    st.markdown("Select a public repository below to clone, index, and explore its codebase instantly:")
-    
-    demo1, demo2, demo3 = st.columns(3)
-    with demo1:
-        st.markdown("""
-        <div class="glass-card" style="margin-bottom: 12px; height: 110px;">
-            <h5 style="margin:0 0 4px 0; color:#38bdf8;">Clueless</h5>
-            <p style="font-size:0.8rem; color:#94a3b8; margin:0 0 8px 0; line-height:1.3;">TypeScript / Web Client App</p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("⛏️ Excavate Clueless", key="demo_clueless", use_container_width=True):
-            excavate_repository_inline("https://github.com/vijaythecoder/clueless")
-            
-    with demo2:
-        st.markdown("""
-        <div class="glass-card" style="margin-bottom: 12px; height: 110px;">
-            <h5 style="margin:0 0 4px 0; color:#a855f7;">Paperclip</h5>
-            <p style="font-size:0.8rem; color:#94a3b8; margin:0 0 8px 0; line-height:1.3;">Python / FastAPI Backend</p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("⛏️ Excavate Paperclip", key="demo_paperclip", use_container_width=True):
-            excavate_repository_inline("https://github.com/paperclipai/paperclip")
-            
-    with demo3:
-        st.markdown("""
-        <div class="glass-card" style="margin-bottom: 12px; height: 110px;">
-            <h5 style="margin:0 0 4px 0; color:#f43f5e;">Awesome React</h5>
-            <p style="font-size:0.8rem; color:#94a3b8; margin:0 0 8px 0; line-height:1.3;">Markdown / Technical Docs</p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("⛏️ Excavate Awesome React", key="demo_awesome", use_container_width=True):
-            excavate_repository_inline("https://github.com/vijaythecoder/awesome-react")
+
 
     pass
 
