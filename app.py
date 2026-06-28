@@ -351,6 +351,19 @@ with st.sidebar:
                 mime="text/markdown",
                 width="stretch"
             )
+            
+        # Reset & Clear Workspace Button (visible if ingested)
+        st.markdown("---")
+        if st.button("🗑️ Reset & Clear Workspace", type="secondary", width="stretch"):
+            with st.spinner("Clearing local caches & database collection..."):
+                st.session_state.retriever.clear_cache()
+                st.session_state.ingested = False
+                st.session_state.stats = {}
+                st.session_state.chat_history = []
+                st.session_state.last_results = []
+                st.session_state.pop("briefing", None)
+                st.session_state.nav_page = "🏠 Welcome Hub"
+            st.rerun()
 
 if st.session_state.nav_page == "🏠 Welcome Hub":
     # Main Hero Header

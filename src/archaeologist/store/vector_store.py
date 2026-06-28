@@ -282,3 +282,27 @@ class HybridVectorStore:
                 ))
                 
         return results
+
+    def clear_cache(self):
+        """Wipes the database collection and clears all local caches on disk and in memory."""
+        try:
+            self.client.delete_collection(self.collection_name)
+        except Exception:
+            pass
+        self._init_collection()
+        
+        self.chunks = {}
+        self.chunk_ids = []
+        self.lineage_map = {}
+        self.bm25 = None
+        
+        # Delete cache files from disk
+        chunks_cache = settings.QDRANT_PATH / "chunks_cache.json"
+        lineage_cache = settings.QDRANT_PATH / "lineage_cache.json"
+        try:
+            if chunks_cache.exists():
+                chunks_cache.unlink()
+            if lineage_cache.exists():
+                lineage_cache.unlink()
+        except Exception:
+            pass

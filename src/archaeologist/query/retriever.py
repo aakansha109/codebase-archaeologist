@@ -91,3 +91,8 @@ class CodebaseRetriever:
                 except Exception:
                     pass
         return results
+
+    def clear_cache(self):
+        """Delegates cache clearing to the vector store."""
+        self.store.clear_cache()
+        self.extractor = None
