@@ -202,6 +202,34 @@ def render_evidence_card(ev):
     with st.expander("👁️ View Source Code Snippet", expanded=False):
         st.code(ev.content, language=ev.language)
 
+def excavate_repository_inline(target_url: str):
+    st.session_state.repo_input_val = target_url
+    error_msg = None
+    with st.status(f" Excavating repository {target_url}...", expanded=True) as status:
+        try:
+            st.write("Cloning repository & mining Git commit lineage...")
+            stats = st.session_state.retriever.ingest_repository(
+                target_url,
+                progress_callback=lambda m: st.write(f"⏳ {m}")
+            )
+            st.session_state.stats = stats
+            st.session_state.ingested = True
+            # Clear stale cache and logs from previous repository excavations
+            st.session_state.pop("briefing", None)
+            st.session_state.chat_history = []
+            st.session_state.last_results = []
+            st.session_state.nav_page = "⛏️ Excavation Workspace"
+            status.update(label="✔ Excavation Complete!", state="complete", expanded=False)
+        except Exception as e:
+            status.update(label="❌ Excavation Failed", state="error", expanded=False)
+            error_msg = str(e)
+            
+    if error_msg:
+        st.error(f"Failed to index repository: {error_msg}")
+    elif st.session_state.ingested:
+        st.success("Codebase successfully indexed into Qdrant!")
+        st.rerun()
+
 # Initialize Session State
 if "retriever" not in st.session_state:
     st.session_state.retriever = get_retriever()
@@ -217,6 +245,10 @@ if "ingested" not in st.session_state:
     else:
         st.session_state.ingested = False
 
+if "repo_input_val" not in st.session_state:
+    st.session_state.repo_input_val = "https://github.com/paperclipai/paperclip"
+if "nav_page" not in st.session_state:
+    st.session_state.nav_page = "🏠 Welcome Hub"
 if "stats" not in st.session_state:
     st.session_state.stats = {}
 if "chat_history" not in st.session_state:
@@ -226,10 +258,25 @@ if "last_results" not in st.session_state:
 
 # Sidebar - Ingestion Controls
 with st.sidebar:
+    st.markdown("### 🧭 Navigation")
+    nav_options = ["🏠 Welcome Hub"]
+    if st.session_state.ingested:
+        nav_options.append("⛏️ Excavation Workspace")
+        
+    page = st.radio(
+        "Select Page",
+        options=nav_options,
+        index=nav_options.index(st.session_state.nav_page) if st.session_state.nav_page in nav_options else 0,
+        label_visibility="collapsed"
+    )
+    st.session_state.nav_page = page
+    
+    st.markdown("---")
     st.markdown("### ⚙️ Repository Excavation")
     repo_input = st.text_input(
         "Target Repository URL or Path",
-        value="https://github.com/paperclipai/paperclip",
+        value=st.session_state.repo_input_val,
+        key="repo_input_val",
         help="Git URL or local folder path"
     )
     
@@ -248,6 +295,7 @@ with st.sidebar:
                 st.session_state.pop("briefing", None)
                 st.session_state.chat_history = []
                 st.session_state.last_results = []
+                st.session_state.nav_page = "⛏️ Excavation Workspace"
                 status.update(label="✔ Excavation Complete!", state="complete", expanded=False)
             except Exception as e:
                 status.update(label="❌ Excavation Failed", state="error", expanded=False)
@@ -257,6 +305,7 @@ with st.sidebar:
             st.error(f"Failed to index repository: {error_msg}")
         elif st.session_state.ingested:
             st.success("Codebase successfully indexed into Qdrant!")
+            st.rerun()
             
     if st.session_state.ingested and st.session_state.stats:
         st.markdown("---")
@@ -329,13 +378,109 @@ with st.sidebar:
                 width="stretch"
             )
 
-# Main Hero Header
-st.markdown('<div class="hero-title">The Codebase Archaeologist 🏛️</div>', unsafe_allow_html=True)
-st.markdown('<div class="hero-subtitle">Uncover technical debt, architectural evolution, and historical context across entire Git repositories.</div>', unsafe_allow_html=True)
+if st.session_state.nav_page == "🏠 Welcome Hub":
+    # Main Hero Header
+    st.markdown('<div class="hero-title">The Codebase Archaeologist 🏛️</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hero-subtitle">Uncover technical debt, architectural evolution, and historical context across entire Git repositories.</div>', unsafe_allow_html=True)
 
-if not st.session_state.ingested:
-    st.info("👈 Please click **Excavate & Index** in the sidebar to ingest `https://github.com/paperclipai/paperclip` or your chosen repository.")
-else:
+    # Feature Showcase (3 Columns)
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("""
+        <div class="glass-card" style="height: 230px; border-top: 4px solid #38bdf8;">
+            <div style="font-size: 2rem; margin-bottom: 8px;">🔬</div>
+            <h4 style="margin: 0 0 8px 0; color: #f8fafc; font-family:'Space Grotesk', sans-serif;">AST-Aware Chunking</h4>
+            <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.4; margin: 0;">
+                Extracts codebases by logical functions, classes, and structs (Python, JS/TS, Go, Rust) rather than arbitrary text windows, preserving logical execution boundaries.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown("""
+        <div class="glass-card" style="height: 230px; border-top: 4px solid #a855f7;">
+            <div style="font-size: 2rem; margin-bottom: 8px;">⏳</div>
+            <h4 style="margin: 0 0 8px 0; color: #f8fafc; font-family:'Space Grotesk', sans-serif;">Git Lineage Mining</h4>
+            <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.4; margin: 0;">
+                Automatically traces authors, dates, and diff history for every code snippet. Instantly maps current functions to their historical origin commits.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col3:
+        st.markdown("""
+        <div class="glass-card" style="height: 230px; border-top: 4px solid #f43f5e;">
+            <div style="font-size: 2rem; margin-bottom: 8px;">🤖</div>
+            <h4 style="margin: 0 0 8px 0; color: #f8fafc; font-family:'Space Grotesk', sans-serif;">AI Code Reviewer</h4>
+            <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.4; margin: 0;">
+                Ask architectural questions about code evolution, technical debt, or select any file and two commits to get a natural-language semantic review.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+    
+    # Quick Load Section
+    st.markdown("### 🚀 Demo Excavations")
+    st.markdown("Select a public repository below to clone, index, and explore its codebase instantly:")
+    
+    demo1, demo2, demo3 = st.columns(3)
+    with demo1:
+        st.markdown("""
+        <div class="glass-card" style="margin-bottom: 12px; height: 110px;">
+            <h5 style="margin:0 0 4px 0; color:#38bdf8;">Clueless</h5>
+            <p style="font-size:0.8rem; color:#94a3b8; margin:0 0 8px 0; line-height:1.3;">TypeScript / Web Client App</p>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("⛏️ Excavate Clueless", key="demo_clueless", use_container_width=True):
+            excavate_repository_inline("https://github.com/vijaythecoder/clueless")
+            
+    with demo2:
+        st.markdown("""
+        <div class="glass-card" style="margin-bottom: 12px; height: 110px;">
+            <h5 style="margin:0 0 4px 0; color:#a855f7;">Paperclip</h5>
+            <p style="font-size:0.8rem; color:#94a3b8; margin:0 0 8px 0; line-height:1.3;">Python / FastAPI Backend</p>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("⛏️ Excavate Paperclip", key="demo_paperclip", use_container_width=True):
+            excavate_repository_inline("https://github.com/paperclipai/paperclip")
+            
+    with demo3:
+        st.markdown("""
+        <div class="glass-card" style="margin-bottom: 12px; height: 110px;">
+            <h5 style="margin:0 0 4px 0; color:#f43f5e;">Awesome React</h5>
+            <p style="font-size:0.8rem; color:#94a3b8; margin:0 0 8px 0; line-height:1.3;">Markdown / Technical Docs</p>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("⛏️ Excavate Awesome React", key="demo_awesome", use_container_width=True):
+            excavate_repository_inline("https://github.com/vijaythecoder/awesome-react")
+
+    st.markdown("---")
+    
+    # Architecture Overview
+    st.markdown("### 🏗️ Technical Architecture")
+    st.markdown("This portfolio project showcases a production-grade RAG pipeline. Below is how the components interact:")
+    st.markdown("""
+    ```mermaid
+    graph TD
+        A[Git Repository] --> B(GitExtractor: Commit history)
+        A --> C(ASTParser: Python/TS/Go Chunks)
+        C --> D[FastEmbed Embeddings]
+        D --> E[(Qdrant Cloud Dense Store)]
+        B --> E
+        
+        F[User Query] --> G{RRF Hybrid Search}
+        G -->|Dense Vector| E
+        G -->|Sparse Lexical| H[Local BM25 Index]
+        
+        G --> I[Context-Enriched Prompt]
+        I --> J[Gemini 1.5 Flash LLM]
+        J --> K[AI Synthesized Explanation]
+        
+        style E fill:#f43f5e,stroke:#fff,stroke-width:2px;
+        style J fill:#a855f7,stroke:#fff,stroke-width:2px;
+    ```
+    """)
+
+elif st.session_state.nav_page == "⛏️ Excavation Workspace" and st.session_state.ingested:
     # Set up Tabs
     tab_search, tab_timeline, tab_diff, tab_analytics = st.tabs([
         "🏛️ Archaeological Search", 
