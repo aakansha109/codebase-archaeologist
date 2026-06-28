@@ -9,8 +9,8 @@ from archaeologist.query.retriever import CodebaseRetriever
 from archaeologist.query.synthesizer import CodeArchaeologistSynthesizer
 
 st.set_page_config(
-    page_title="The Codebase Archaeologist 🏛️",
-    page_icon="🏛️",
+    page_title="The Codebase Archaeologist",
+    page_icon="⛏️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -258,6 +258,8 @@ if "last_results" not in st.session_state:
 
 # Sidebar - Ingestion Controls
 with st.sidebar:
+    # Small sidebar logo
+    st.image("logo.png", width=120)
     st.markdown("### 🧭 Navigation")
     nav_options = ["🏠 Welcome Hub"]
     if st.session_state.ingested:
@@ -379,8 +381,11 @@ with st.sidebar:
             )
 
 if st.session_state.nav_page == "🏠 Welcome Hub":
-    # Main Hero Header
-    st.markdown('<div class="hero-title">The Codebase Archaeologist 🏛️</div>', unsafe_allow_html=True)
+    # Centered Logo and Main Hero Header
+    logo_col1, logo_col2, logo_col3 = st.columns([1, 1.2, 1])
+    with logo_col2:
+        st.image("logo.png", width=200)
+    st.markdown('<div class="hero-title" style="margin-top: -1.5rem;">The Codebase Archaeologist</div>', unsafe_allow_html=True)
     st.markdown('<div class="hero-subtitle">Uncover technical debt, architectural evolution, and historical context across entire Git repositories.</div>', unsafe_allow_html=True)
 
     # Feature Showcase (3 Columns)
@@ -453,32 +458,7 @@ if st.session_state.nav_page == "🏠 Welcome Hub":
         if st.button("⛏️ Excavate Awesome React", key="demo_awesome", use_container_width=True):
             excavate_repository_inline("https://github.com/vijaythecoder/awesome-react")
 
-    st.markdown("---")
-    
-    # Architecture Overview
-    st.markdown("### 🏗️ Technical Architecture")
-    st.markdown("This portfolio project showcases a production-grade RAG pipeline. Below is how the components interact:")
-    st.markdown("""
-    ```mermaid
-    graph TD
-        A[Git Repository] --> B(GitExtractor: Commit history)
-        A --> C(ASTParser: Python/TS/Go Chunks)
-        C --> D[FastEmbed Embeddings]
-        D --> E[(Qdrant Cloud Dense Store)]
-        B --> E
-        
-        F[User Query] --> G{RRF Hybrid Search}
-        G -->|Dense Vector| E
-        G -->|Sparse Lexical| H[Local BM25 Index]
-        
-        G --> I[Context-Enriched Prompt]
-        I --> J[Gemini 1.5 Flash LLM]
-        J --> K[AI Synthesized Explanation]
-        
-        style E fill:#f43f5e,stroke:#fff,stroke-width:2px;
-        style J fill:#a855f7,stroke:#fff,stroke-width:2px;
-    ```
-    """)
+    pass
 
 elif st.session_state.nav_page == "⛏️ Excavation Workspace" and st.session_state.ingested:
     # Set up Tabs
