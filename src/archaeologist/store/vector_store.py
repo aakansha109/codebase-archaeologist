@@ -43,7 +43,8 @@ class HybridVectorStore:
         # Initialize fastembed embedding model if available
         try:
             from fastembed import TextEmbedding
-            self.embedder = list(TextEmbedding(model_name=settings.EMBEDDING_MODEL))[0] if False else TextEmbedding(model_name=settings.EMBEDDING_MODEL)
+            # Restrict ONNX runtime thread pool to 1 thread to optimize memory on serverless nodes
+            self.embedder = TextEmbedding(model_name=settings.EMBEDDING_MODEL, threads=1)
         except Exception:
             self.embedder = None
             
@@ -154,6 +155,10 @@ class HybridVectorStore:
         self.chunk_ids = []
         self.lineage_map = {}
         self.bm25 = None
+        
+        # Force garbage collection to free up memory from old chunks
+        import gc
+        gc.collect()
         
         points = []
         corpus_tokens = []
@@ -306,3 +311,7 @@ class HybridVectorStore:
                 lineage_cache.unlink()
         except Exception:
             pass
+            
+        # Force garbage collection to reclaim memory instantly
+        import gc
+        gc.collect()
