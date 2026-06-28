@@ -202,15 +202,19 @@ with st.sidebar:
     
     if st.button("🚀 Excavate & Index", width="stretch", type="primary"):
         with st.status(" Excavating codebase...", expanded=True) as status:
-            st.write("Cloning repository & mining Git commit lineage...")
-            stats = st.session_state.retriever.ingest_repository(
-                repo_input,
-                progress_callback=lambda m: st.write(f"⏳ {m}")
-            )
-            st.session_state.stats = stats
-            st.session_state.ingested = True
-            status.update(label="✔ Excavation Complete!", state="complete", expanded=False)
-            st.success("Codebase successfully indexed into Qdrant!")
+            try:
+                st.write("Cloning repository & mining Git commit lineage...")
+                stats = st.session_state.retriever.ingest_repository(
+                    repo_input,
+                    progress_callback=lambda m: st.write(f"⏳ {m}")
+                )
+                st.session_state.stats = stats
+                st.session_state.ingested = True
+                status.update(label="✔ Excavation Complete!", state="complete", expanded=False)
+                st.success("Codebase successfully indexed into Qdrant!")
+            except Exception as e:
+                status.update(label="❌ Excavation Failed", state="error", expanded=False)
+                st.error(f"Failed to index repository: {e}")
             
     if st.session_state.ingested and st.session_state.stats:
         st.markdown("---")

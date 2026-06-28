@@ -35,20 +35,38 @@ class GitExtractor:
                     pass
 
     def prepare_repo(self) -> Path:
-        """Clones URL if remote, or opens local path."""
+        """Clones URL if remote, or opens local path, handling directory corruptions and permissions."""
         if self.target.startswith("http://") or self.target.startswith("https://") or self.target.startswith("git@"):
             repo_name = self.target.rstrip("/").split("/")[-1].replace(".git", "")
             local_dir = settings.REPOS_DIR / repo_name
+            
+            def remove_readonly(func, path, _):
+                import stat
+                try:
+                    os.chmod(path, stat.S_IWRITE)
+                    func(path)
+                except Exception:
+                    pass
+            
             if local_dir.exists():
                 try:
                     self.repo = git.Repo(local_dir)
-                    # Try pulling latest
                     self.repo.remotes.origin.pull()
+                    self.repo_path = local_dir
                 except Exception:
-                    pass
-            else:
-                self.repo = git.Repo.clone_from(self.target, local_dir)
-            self.repo_path = local_dir
+                    try:
+                        shutil.rmtree(local_dir, onerror=remove_readonly)
+                    except Exception:
+                        pass
+                    self.repo = None
+            
+            if not self.repo or not local_dir.exists():
+                try:
+                    settings.REPOS_DIR.mkdir(parents=True, exist_ok=True)
+                    self.repo = git.Repo.clone_from(self.target, local_dir, depth=30)
+                    self.repo_path = local_dir
+                except Exception as e:
+                    raise RuntimeError(f"Failed to clone repository {self.target}: {e}")
         else:
             path = Path(self.target).resolve()
             if not path.exists():
