@@ -1,7 +1,10 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent / "src"))
+
 import streamlit as st
 import pandas as pd
 import altair as alt
-from pathlib import Path
 from archaeologist.query.retriever import CodebaseRetriever
 from archaeologist.query.synthesizer import CodeArchaeologistSynthesizer
 
