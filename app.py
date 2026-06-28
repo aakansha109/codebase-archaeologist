@@ -169,6 +169,39 @@ st.markdown("""
 def get_retriever():
     return CodebaseRetriever()
 
+def render_evidence_card(ev):
+    # Convert raw score to simple, human-friendly confidence rating
+    match_rating = "🔥 Strong Match" if ev.score >= 0.03 else "⚡ Relevant Match"
+    
+    # Format git commit lineage subjects
+    lineage_html = ""
+    if ev.lineage:
+        for c in ev.lineage[:2]:
+            h = c.get('commit_hash', '') if isinstance(c, dict) else c.commit_hash
+            msg = c.get('message', '') if isinstance(c, dict) else c.message
+            subject = msg.split('\n')[0].strip()
+            lineage_html += f"<div style='font-size:0.8rem; color:#c084fc; margin-bottom:2px;'><code>{h}</code>: {subject[:60]}</div>"
+    else:
+        lineage_html = "<div style='font-size:0.8rem; color:#94a3b8;'>No recent commit lineage available.</div>"
+
+    st.markdown(f"""
+    <div class="glass-card" style="margin-bottom: 1rem; border-left: 4px solid #818cf8;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span class="badge" style="background:linear-gradient(135deg, #38bdf8, #6366f1);">{ev.chunk_type.upper()}</span>
+            <span style="font-size:0.85rem; color:#818cf8; font-weight:bold;">{match_rating}</span>
+        </div>
+        <h4 style="margin: 0 0 6px 0; color:#f8fafc; font-family:'Space Grotesk', sans-serif;"><code>{ev.name}</code></h4>
+        <p style="font-size:0.85rem; color:#94a3b8; margin: 4px 0;">📁 <strong>File Path:</strong> <code>{ev.file_path}</code> (Lines {ev.start_line} - {ev.end_line})</p>
+        <div style="margin-top:8px; border-top: 1px solid rgba(255,255,255,0.06); padding-top:8px;">
+            <p style="font-size:0.85rem; color:#f8fafc; font-weight:600; margin-bottom:4px;">⏳ Code Evolution History:</p>
+            {lineage_html}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    with st.expander("👁️ View Source Code Snippet", expanded=False):
+        st.code(ev.content, language=ev.language)
+
 # Initialize Session State
 if "retriever" not in st.session_state:
     st.session_state.retriever = get_retriever()
@@ -323,17 +356,7 @@ else:
                 if "evidence" in msg and msg["evidence"]:
                     with st.expander("🔍 View Retrieved AST Evidence & Lineage"):
                         for ev in msg["evidence"]:
-                            st.markdown(f"""
-                            <div class="glass-card">
-                                <span class="badge">{ev.chunk_type.upper()} • Score: {ev.score}</span>
-                                <h4><code>{ev.name}</code> in <em>{ev.file_path}</em> (L{ev.start_line}-{ev.end_line})</h4>
-                                <p><strong>⏳ Recent Commit Lineage:</strong></p>
-                                <ul>
-                            """ + "".join([f"<li><code>{c['commit_hash']}</code> ({c['date'][:10]}): {c['message']}</li>" for c in ev.lineage[:3]]) + f"""
-                                </ul>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            st.code(ev.content[:800], language=ev.language)
+                            render_evidence_card(ev)
                             
         if query:
             # Add user query
@@ -353,17 +376,7 @@ else:
                 if results:
                     with st.expander("🔍 View Retrieved AST Evidence & Lineage", expanded=True):
                         for ev in results:
-                            st.markdown(f"""
-                            <div class="glass-card">
-                                <span class="badge">{ev.chunk_type.upper()} • Score: {ev.score}</span>
-                                <h4><code>{ev.name}</code> in <em>{ev.file_path}</em> (L{ev.start_line}-{ev.end_line})</h4>
-                                <p><strong>⏳ Recent Commit Lineage:</strong></p>
-                                <ul>
-                            """ + "".join([f"<li><code>{c['commit_hash']}</code> ({c['date'][:10]}): {c['message']}</li>" for c in ev.lineage[:3]]) + f"""
-                                </ul>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            st.code(ev.content[:800], language=ev.language)
+                            render_evidence_card(ev)
                             
                 st.session_state.chat_history.append({
                     "role": "assistant",
