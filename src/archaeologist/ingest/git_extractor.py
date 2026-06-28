@@ -116,3 +116,14 @@ class GitExtractor:
             return commits
         except Exception:
             return []
+
+    def get_file_diff(self, rel_file_path: str, commit_a: str, commit_b: str) -> str:
+        """Retrieves raw Git diff content for a specific file between two commits."""
+        if not self.repo:
+            return ""
+        try:
+            normalized = rel_file_path.replace("\\", "/")
+            diff_text = self.repo.git.diff(commit_a, commit_b, "--", normalized)
+            return diff_text
+        except Exception as e:
+            return f"Error retrieving diff: {e}"

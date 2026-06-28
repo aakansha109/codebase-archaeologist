@@ -230,6 +230,58 @@ with st.sidebar:
                 <div class="metric-label">AST Chunks</div>
             </div>
             """, unsafe_allow_html=True)
+            
+        # Background Auto-Briefing Generation
+        chunks = list(st.session_state.retriever.store.chunks.values())
+        if chunks and "briefing" not in st.session_state:
+            file_chunk_counts = {}
+            for chunk in chunks:
+                file_chunk_counts[chunk.file_path] = file_chunk_counts.get(chunk.file_path, 0) + 1
+            top_files = sorted(file_chunk_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+            
+            commits = []
+            if st.session_state.retriever.extractor:
+                try:
+                    commits = st.session_state.retriever.extractor.mine_commit_history(max_commits=10)
+                except Exception:
+                    pass
+            if not commits and st.session_state.retriever.store.lineage_map:
+                unique_commits = {}
+                for file_path, file_commits in st.session_state.retriever.store.lineage_map.items():
+                    for c in file_commits:
+                        unique_commits[c["commit_hash"]] = c
+                commits = sorted(unique_commits.values(), key=lambda x: x.get("date", ""), reverse=True)[:10]
+                
+            synthesizer = CodeArchaeologistSynthesizer()
+            with st.spinner("Analyzing repository briefing..."):
+                briefing_text = synthesizer.generate_briefing(st.session_state.stats, top_files, commits)
+                st.session_state.briefing = briefing_text
+                
+        # Export Report Button
+        if "briefing" in st.session_state:
+            report_text = f"""# Archaeological Excavation Report: {repo_input}
+
+## Repository Summary
+- **Commits Mined**: {st.session_state.stats.get("commits_mined", 0)}
+- **AST Chunks Mined**: {st.session_state.stats.get("chunks_indexed", 0)}
+
+## Executive Briefing
+{st.session_state.briefing}
+
+## Q&A Exploration History
+"""
+            for msg in st.session_state.chat_history:
+                role_name = "User" if msg["role"] == "user" else "Archaeologist Assistant"
+                report_text += f"\n### {role_name}\n{msg['content']}\n"
+                
+            st.markdown("---")
+            st.download_button(
+                label="📥 Export Archaeology Report",
+                data=report_text,
+                file_name="archaeology_report.md",
+                mime="text/markdown",
+                use_container_width=True
+            )
 
 # Main Hero Header
 st.markdown('<div class="hero-title">The Codebase Archaeologist 🏛️</div>', unsafe_allow_html=True)
@@ -239,14 +291,19 @@ if not st.session_state.ingested:
     st.info("👈 Please click **Excavate & Index** in the sidebar to ingest `https://github.com/paperclipai/paperclip` or your chosen repository.")
 else:
     # Set up Tabs
-    tab_search, tab_timeline, tab_analytics = st.tabs([
+    tab_search, tab_timeline, tab_diff, tab_analytics = st.tabs([
         "🏛️ Archaeological Search", 
         "⏳ Git Lineage Timeline", 
+        "🔍 Semantic Diff Explainer",
         "📊 Codebase Analytics"
     ])
     
     # ------------------ TAB 1: SEARCH & CHAT ------------------
     with tab_search:
+        if "briefing" in st.session_state:
+            with st.expander("🏛️ View Excavation Briefing", expanded=True):
+                st.markdown(st.session_state.briefing)
+                
         # Query Interface
         query = st.chat_input("Ask an archaeological question (e.g. 'Why did we choose Redis or make architectural changes?')")
         
@@ -397,7 +454,67 @@ else:
         else:
             st.warning("No commit lineage history is currently available. Excavate the repository first.")
             
-    # ------------------ TAB 3: CODEBASE ANALYTICS ------------------
+    # ------------------ TAB 3: SEMANTIC DIFF EXPLAINER ------------------
+    with tab_diff:
+        st.markdown("### 🔍 Semantic Diff Explainer")
+        st.markdown("Select a file and compare two historical commits to get a natural language AI explanation of what changed and why.")
+        
+        chunks = list(st.session_state.retriever.store.chunks.values())
+        if chunks:
+            unique_files = sorted(list(set(c.file_path for c in chunks)))
+            selected_file = st.selectbox("Select File to Audit", unique_files, key="diff_file_select")
+            
+            # Fetch commits
+            commits = []
+            if st.session_state.retriever.extractor:
+                try:
+                    commits = st.session_state.retriever.extractor.mine_commit_history(max_commits=100)
+                except Exception:
+                    pass
+            if not commits and st.session_state.retriever.store.lineage_map:
+                unique_commits = {}
+                for file_path, file_commits in st.session_state.retriever.store.lineage_map.items():
+                    for c in file_commits:
+                        unique_commits[c["commit_hash"]] = c
+                commits = sorted(unique_commits.values(), key=lambda x: x.get("date", ""), reverse=True)
+                
+            if commits:
+                commit_options = [f"{c.commit_hash if hasattr(c, 'commit_hash') else c.get('commit_hash', '')} - {c.message[:50] if hasattr(c, 'message') else c.get('message', '')[:50]}" for c in commits]
+                
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    commit_a_choice = st.selectbox("Compare from (Commit A - Older)", commit_options, index=min(1, len(commit_options)-1), key="diff_commit_a")
+                with col_b:
+                    commit_b_choice = st.selectbox("Compare to (Commit B - Newer)", commit_options, index=0, key="diff_commit_b")
+                    
+                hash_a = commit_a_choice.split(" - ")[0]
+                hash_b = commit_b_choice.split(" - ")[0]
+                
+                if st.button("🔍 Explain Differences", type="primary", use_container_width=True):
+                    with st.spinner("Extracting git diff..."):
+                        diff_text = ""
+                        if st.session_state.retriever.extractor:
+                            diff_text = st.session_state.retriever.extractor.get_file_diff(selected_file, hash_a, hash_b)
+                        else:
+                            diff_text = "Error: Local git repository extractor is not available in cloud fallback."
+                            
+                    if diff_text and not diff_text.startswith("Error"):
+                        st.markdown("#### 📝 AI Semantic Explanation")
+                        synthesizer = CodeArchaeologistSynthesizer()
+                        with st.spinner("Synthesizing code review..."):
+                            explanation = synthesizer.explain_diff(selected_file, hash_a, hash_b, diff_text)
+                        st.markdown(f'<div class="glass-card" style="border-left: 4px solid #a855f7;">{explanation}</div>', unsafe_allow_html=True)
+                        
+                        with st.expander("📝 View Raw Diff Code"):
+                            st.code(diff_text, language="diff")
+                    else:
+                        st.error(f"Could not retrieve diff or file was not present: {diff_text or 'No changes detected.'}")
+            else:
+                st.warning("No commits found to compare.")
+        else:
+            st.warning("No chunks available. Index a repository first.")
+
+    # ------------------ TAB 4: CODEBASE ANALYTICS ------------------
     with tab_analytics:
         st.markdown("### 📊 Codebase Structure & Language Distribution")
         
