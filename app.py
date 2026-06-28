@@ -200,7 +200,7 @@ with st.sidebar:
         help="Git URL or local folder path"
     )
     
-    if st.button("🚀 Excavate & Index", use_container_width=True, type="primary"):
+    if st.button("🚀 Excavate & Index", width="stretch", type="primary"):
         with st.status(" Excavating codebase...", expanded=True) as status:
             st.write("Cloning repository & mining Git commit lineage...")
             stats = st.session_state.retriever.ingest_repository(
@@ -280,7 +280,7 @@ with st.sidebar:
                 data=report_text,
                 file_name="archaeology_report.md",
                 mime="text/markdown",
-                use_container_width=True
+                width="stretch"
             )
 
 # Main Hero Header
@@ -490,7 +490,7 @@ else:
                 hash_a = commit_a_choice.split(" - ")[0]
                 hash_b = commit_b_choice.split(" - ")[0]
                 
-                if st.button("🔍 Explain Differences", type="primary", use_container_width=True):
+                if st.button("🔍 Explain Differences", type="primary", width="stretch"):
                     with st.spinner("Extracting git diff..."):
                         diff_text = ""
                         if st.session_state.retriever.extractor:
