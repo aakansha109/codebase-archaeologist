@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codebase-archaeologist"
+version = "0.1.0"
+description = "Advanced RAG system that ingests entire git repositories via AST parsing and commit lineage to answer historical context questions."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Aakansha Sharma", email = "aakansha@example.com" }
+]
+dependencies = [
+    "qdrant-client>=1.9.0",
+    "fastembed>=0.2.0",
+    "langchain>=0.2.0",
+    "langchain-community>=0.2.0",
+    "langchain-google-genai>=1.0.0",
+    "langchain-openai>=0.1.0",
+    "gitpython>=3.1.40",
+    "typer>=0.12.0",
+    "rich>=13.7.0",
+    "streamlit>=1.35.0",
+    "pydantic>=2.7.0",
+    "rank_bm25>=0.2.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+]
+
+[project.scripts]
+archaeologist = "archaeologist.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]

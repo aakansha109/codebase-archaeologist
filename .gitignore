@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.env.*
+qdrant_db/
+repos/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
