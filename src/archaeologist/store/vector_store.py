@@ -139,13 +139,24 @@ class HybridVectorStore:
         return tokens
 
     def ingest_chunks(self, chunks: List[CodeChunk], lineage_map: Dict[str, Any], extractor: Optional[Any] = None):
-        """Indexes code chunks into Qdrant (dense) and BM25 (sparse)."""
+        """Indexes code chunks into Qdrant (dense) and BM25 (sparse) after clearing previous repository data."""
         if not chunks:
             return
             
+        # Reset database and memory state to start fresh with the new repository
+        try:
+            self.client.delete_collection(self.collection_name)
+        except Exception:
+            pass
+        self._init_collection()
+        
+        self.chunks = {}
+        self.chunk_ids = []
+        self.lineage_map = {}
+        self.bm25 = None
+        
         points = []
         corpus_tokens = []
-        self.chunk_ids = []
         
         # Prepare embeddings
         texts_to_embed = [f"{c.name}\n{c.docstring or ''}\n{c.content[:500]}" for c in chunks]
