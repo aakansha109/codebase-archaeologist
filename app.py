@@ -244,6 +244,10 @@ with st.sidebar:
                 )
                 st.session_state.stats = stats
                 st.session_state.ingested = True
+                # Clear stale cache and logs from previous repository excavations
+                st.session_state.pop("briefing", None)
+                st.session_state.chat_history = []
+                st.session_state.last_results = []
                 status.update(label="✔ Excavation Complete!", state="complete", expanded=False)
             except Exception as e:
                 status.update(label="❌ Excavation Failed", state="error", expanded=False)
