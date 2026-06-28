@@ -212,7 +212,7 @@ class ASTCodeParser:
                         start_line=start_line,
                         end_line=end_line
                     ))
-                    i = end_line - 1
+                    i = end_line
                     matched = True
                     break
             if not matched:

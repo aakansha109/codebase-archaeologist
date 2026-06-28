@@ -51,10 +51,13 @@ export class RedisCache {
         return true;
     }
 }
+
+export function inlineFunc() { return true; }
 ''')
     parser = ASTCodeParser()
     chunks = parser.parse_file(sample_ts, relative_to=tmp_path)
     names = [c.name for c in chunks]
+    assert "inlineFunc" in names
     assert "UserSession" in names
     assert "SafeUser" in names
     assert "authenticateUser" in names
