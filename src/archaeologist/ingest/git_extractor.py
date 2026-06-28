@@ -86,7 +86,12 @@ class GitExtractor:
         
         try:
             for commit in self.repo.iter_commits(max_count=max_commits):
-                files = list(commit.stats.files.keys())
+                try:
+                    # High-performance, low-memory files list retrieval bypassing stats diff parsing
+                    files_str = self.repo.git.diff_tree(commit.hexsha, no_commit_id=True, name_only=True, r=True)
+                    files = [f.strip() for f in files_str.strip().split("\n") if f.strip()] if files_str else []
+                except Exception:
+                    files = []
                 dt = datetime.fromtimestamp(commit.authored_date).isoformat()
                 
                 info = CommitInfo(
