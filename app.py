@@ -486,19 +486,30 @@ else:
             unique_files = sorted(list(set(c.file_path for c in chunks)))
             selected_file = st.selectbox("Select File to Audit", unique_files, key="diff_file_select")
             
-            # Fetch commits
+            # Fetch commits that modified this specific file
             commits = []
             if st.session_state.retriever.extractor:
                 try:
-                    commits = st.session_state.retriever.extractor.mine_commit_history(max_commits=100)
+                    commits = st.session_state.retriever.extractor.get_file_lineage(selected_file)
                 except Exception:
                     pass
             if not commits and st.session_state.retriever.store.lineage_map:
-                unique_commits = {}
-                for file_path, file_commits in st.session_state.retriever.store.lineage_map.items():
-                    for c in file_commits:
-                        unique_commits[c["commit_hash"]] = c
-                commits = sorted(unique_commits.values(), key=lambda x: x.get("date", ""), reverse=True)
+                normalized = selected_file.replace("\\", "/")
+                commits = st.session_state.retriever.store.lineage_map.get(normalized, [])
+                
+            # Fallback to general commit list if no file-specific lineage is found
+            if not commits:
+                if st.session_state.retriever.extractor:
+                    try:
+                        commits = st.session_state.retriever.extractor.mine_commit_history(max_commits=50)
+                    except Exception:
+                        pass
+                if not commits and st.session_state.retriever.store.lineage_map:
+                    unique_commits = {}
+                    for file_path, file_commits in st.session_state.retriever.store.lineage_map.items():
+                        for c in file_commits:
+                            unique_commits[c["commit_hash"]] = c
+                    commits = sorted(unique_commits.values(), key=lambda x: x.get("date", ""), reverse=True)
                 
             if commits:
                 commit_options = [f"{c.commit_hash if hasattr(c, 'commit_hash') else c.get('commit_hash', '')} - {c.message[:50] if hasattr(c, 'message') else c.get('message', '')[:50]}" for c in commits]
