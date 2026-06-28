@@ -622,7 +622,8 @@ elif st.session_state.nav_page == "⛏️ Excavation Workspace" and st.session_s
                         synthesizer = CodeArchaeologistSynthesizer()
                         with st.spinner("Synthesizing code review..."):
                             explanation = synthesizer.explain_diff(selected_file, hash_a, hash_b, diff_text)
-                        st.markdown(f'<div class="glass-card" style="border-left: 4px solid #a855f7;">{explanation}</div>', unsafe_allow_html=True)
+                        with st.container(border=True):
+                            st.markdown(explanation)
                     else:
                         st.error(f"Could not retrieve diff or file was not present: {diff_text or 'No changes detected.'}")
             else:
