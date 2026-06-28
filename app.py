@@ -201,6 +201,7 @@ with st.sidebar:
     )
     
     if st.button("🚀 Excavate & Index", width="stretch", type="primary"):
+        error_msg = None
         with st.status(" Excavating codebase...", expanded=True) as status:
             try:
                 st.write("Cloning repository & mining Git commit lineage...")
@@ -211,10 +212,14 @@ with st.sidebar:
                 st.session_state.stats = stats
                 st.session_state.ingested = True
                 status.update(label="✔ Excavation Complete!", state="complete", expanded=False)
-                st.success("Codebase successfully indexed into Qdrant!")
             except Exception as e:
                 status.update(label="❌ Excavation Failed", state="error", expanded=False)
-                st.error(f"Failed to index repository: {e}")
+                error_msg = str(e)
+                
+        if error_msg:
+            st.error(f"Failed to index repository: {error_msg}")
+        elif st.session_state.ingested:
+            st.success("Codebase successfully indexed into Qdrant!")
             
     if st.session_state.ingested and st.session_state.stats:
         st.markdown("---")
