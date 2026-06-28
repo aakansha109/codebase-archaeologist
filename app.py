@@ -356,7 +356,17 @@ with st.sidebar:
         st.markdown("---")
         if st.button("🗑️ Reset & Clear Workspace", type="secondary", width="stretch"):
             with st.spinner("Clearing local caches & database collection..."):
-                st.session_state.retriever.clear_cache()
+                retriever = st.session_state.retriever
+                if hasattr(retriever, "clear_cache"):
+                    retriever.clear_cache()
+                else:
+                    # Safe fallback for hot-reloaded active cache sessions
+                    try:
+                        retriever.store.clear_cache()
+                    except Exception:
+                        pass
+                    retriever.extractor = None
+                    
                 st.session_state.ingested = False
                 st.session_state.stats = {}
                 st.session_state.chat_history = []
