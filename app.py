@@ -258,8 +258,6 @@ if "last_results" not in st.session_state:
 
 # Sidebar - Ingestion Controls
 with st.sidebar:
-    # Small sidebar logo
-    st.image("logo.png", width=120)
     st.markdown("### 🧭 Navigation")
     nav_options = ["🏠 Welcome Hub"]
     if st.session_state.ingested:
@@ -381,11 +379,8 @@ with st.sidebar:
             )
 
 if st.session_state.nav_page == "🏠 Welcome Hub":
-    # Centered Logo and Main Hero Header
-    logo_col1, logo_col2, logo_col3 = st.columns([1, 1.2, 1])
-    with logo_col2:
-        st.image("logo.png", width=200)
-    st.markdown('<div class="hero-title" style="margin-top: -1.5rem;">The Codebase Archaeologist</div>', unsafe_allow_html=True)
+    # Main Hero Header
+    st.markdown('<div class="hero-title">The Codebase Archaeologist</div>', unsafe_allow_html=True)
     st.markdown('<div class="hero-subtitle">Uncover technical debt, architectural evolution, and historical context across entire Git repositories.</div>', unsafe_allow_html=True)
 
     # Feature Showcase (3 Columns)
