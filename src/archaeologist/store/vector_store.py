@@ -15,6 +15,7 @@ class SearchResult(BaseModel):
     file_path: str
     name: str
     chunk_type: str
+    language: str
     content: str
     start_line: int
     end_line: int
@@ -351,6 +352,7 @@ class HybridVectorStore:
                     file_path=chunk.file_path,
                     name=chunk.name,
                     chunk_type=chunk.chunk_type,
+                    language=chunk.language,
                     content=chunk.content,
                     start_line=chunk.start_line,
                     end_line=chunk.end_line,
