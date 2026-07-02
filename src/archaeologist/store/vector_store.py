@@ -136,10 +136,21 @@ class HybridVectorStore:
         """Creates Qdrant collection if not exists."""
         collections = [c.name for c in self.client.get_collections().collections]
         if self.collection_name not in collections:
+            import os
+            vector_size = 768 if os.getenv("GEMINI_API_KEY") else 384
             self.client.create_collection(
                 collection_name=self.collection_name,
-                vectors_config=VectorParams(size=settings.DENSE_VECTOR_SIZE, distance=Distance.COSINE)
+                vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE)
             )
+
+    def _get_vector_size(self) -> int:
+        """Determines the vector size of the current collection, defaulting based on API availability."""
+        try:
+            info = self.client.get_collection(self.collection_name)
+            return info.config.params.vectors.size
+        except Exception:
+            import os
+            return 768 if os.getenv("GEMINI_API_KEY") else 384
 
     def _tokenize(self, text: str) -> List[str]:
         """Simple tokenizer for BM25 keyword matching."""
@@ -157,7 +168,19 @@ class HybridVectorStore:
             self.client.delete_collection(self.collection_name)
         except Exception:
             pass
-        self._init_collection()
+            
+        import os
+        api_key = os.getenv("GEMINI_API_KEY")
+        use_gemini = bool(api_key)
+        vector_size = 768 if use_gemini else 384
+        
+        try:
+            self.client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE)
+            )
+        except Exception as e:
+            print(f"Warning: Failed to create collection: {e}")
         
         self.chunks = {}
         self.chunk_ids = []
@@ -175,14 +198,32 @@ class HybridVectorStore:
         texts_to_embed = [f"{c.name}\n{c.docstring or ''}\n{c.content[:500]}" for c in chunks]
         
         embeddings = []
-        if self.embedder:
+        if use_gemini:
             try:
-                embeddings = list(self.embedder.embed(texts_to_embed))
+                from google import genai
+                client = genai.Client(api_key=api_key)
+                
+                # Chunk texts into batches of 100 to avoid payload/limit issues
+                batch_size = 100
+                for start_idx in range(0, len(texts_to_embed), batch_size):
+                    batch_texts = texts_to_embed[start_idx:start_idx + batch_size]
+                    response = client.models.embed_content(
+                        model="text-embedding-004",
+                        contents=batch_texts
+                    )
+                    embeddings.extend([e.values for e in response.embeddings])
             except Exception as e:
-                print(f"Warning embedding failed, using dummy vectors: {e}")
-                embeddings = [[0.0] * settings.DENSE_VECTOR_SIZE for _ in chunks]
+                print(f"Warning: Gemini batch embedding failed: {e}")
+                embeddings = [[0.0] * vector_size for _ in chunks]
         else:
-            embeddings = [[0.0] * settings.DENSE_VECTOR_SIZE for _ in chunks]
+            if self.embedder:
+                try:
+                    embeddings = list(self.embedder.embed(texts_to_embed))
+                except Exception as e:
+                    print(f"Warning embedding failed, using dummy vectors: {e}")
+                    embeddings = [[0.0] * vector_size for _ in chunks]
+            else:
+                embeddings = [[0.0] * vector_size for _ in chunks]
             
         for i, chunk in enumerate(chunks):
             self.chunks[chunk.chunk_id] = chunk
@@ -246,9 +287,33 @@ class HybridVectorStore:
         
         # 1. Dense Retrieval
         dense_results = []
-        if self.embedder:
+        query_vec = None
+        
+        vector_size = self._get_vector_size()
+        
+        if vector_size == 768:
             try:
-                query_vec = list(self.embedder.embed([query]))[0]
+                import os
+                api_key = os.getenv("GEMINI_API_KEY")
+                if api_key:
+                    from google import genai
+                    client = genai.Client(api_key=api_key)
+                    response = client.models.embed_content(
+                        model="text-embedding-004",
+                        contents=[query]
+                    )
+                    query_vec = response.embeddings[0].values
+            except Exception as e:
+                print(f"Warning: Gemini query embedding failed: {e}")
+        else:
+            if self.embedder:
+                try:
+                    query_vec = list(self.embedder.embed([query]))[0]
+                except Exception:
+                    pass
+                    
+        if query_vec is not None:
+            try:
                 dense_hits = self.client.search(
                     collection_name=self.collection_name,
                     query_vector=list(query_vec),
