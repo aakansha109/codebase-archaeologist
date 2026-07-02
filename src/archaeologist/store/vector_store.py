@@ -40,16 +40,24 @@ class HybridVectorStore:
         self.bm25: Optional[BM25Okapi] = None
         self.chunk_ids: List[str] = []
         
-        # Initialize fastembed embedding model if available
-        try:
-            from fastembed import TextEmbedding
-            # Restrict ONNX runtime thread pool to 1 thread to optimize memory on serverless nodes
-            self.embedder = TextEmbedding(model_name=settings.EMBEDDING_MODEL, threads=1)
-        except Exception:
-            self.embedder = None
+        # Will be lazy-loaded on demand
+        self._embedder_instance = None
             
         self._init_collection()
         self._load_cache()
+
+    @property
+    def embedder(self):
+        """Lazy-loaded embedding model to optimize startup memory footprint."""
+        if self._embedder_instance is None:
+            try:
+                from fastembed import TextEmbedding
+                # Restrict ONNX runtime thread pool to 1 thread to optimize memory on serverless nodes
+                self._embedder_instance = TextEmbedding(model_name=settings.EMBEDDING_MODEL, threads=1)
+            except Exception as e:
+                print(f"Warning: Failed to load TextEmbedding model: {e}")
+                self._embedder_instance = None
+        return self._embedder_instance
 
     def _load_cache(self):
         """Loads chunks, metadata, and git lineage from local cache or scrolls Qdrant for stateless recovery."""
