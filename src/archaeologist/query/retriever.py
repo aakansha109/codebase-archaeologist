@@ -85,9 +85,38 @@ class CodebaseRetriever:
             progress_callback("Ingestion complete!")
         return stats
 
-    def retrieve(self, query: str, top_k: int = 5) -> List[SearchResult]:
-        """Retrieves top matches and attaches Git lineage dynamically at query time."""
-        results = self.store.search(query, top_k=top_k)
+    def hyde_expand_query(self, query: str) -> str:
+        """Generates hypothetical code snippets to bridge natural language queries and code symbols."""
+        if len(query.strip().split()) < 3:
+            return query
+            
+        import os
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            return query
+            
+        try:
+            from google import genai
+            client = genai.Client(api_key=api_key)
+            prompt = (
+                f"Generate a 2-line hypothetical code function snippet or key symbol names that would answer this query:\n"
+                f"\"{query}\"\nReturn ONLY code/symbol names, no markdown explanations."
+            )
+            response = client.models.generate_content(
+                model=settings.GEMINI_MODEL,
+                contents=prompt
+            )
+            hypothetical_code = response.text.strip()
+            if hypothetical_code:
+                return f"{query}\n{hypothetical_code}"
+        except Exception:
+            pass
+        return query
+
+    def retrieve(self, query: str, top_k: int = 5, use_hyde: bool = True) -> List[SearchResult]:
+        """Retrieves top matches using optional HyDE query expansion and attaches Git lineage dynamically at query time."""
+        search_query = self.hyde_expand_query(query) if use_hyde else query
+        results = self.store.search(search_query, top_k=top_k)
         
         # Load GitExtractor dynamically if not present (e.g. across CLI runs)
         if not self.extractor and settings.REPOS_DIR.exists():

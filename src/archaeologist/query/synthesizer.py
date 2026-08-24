@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Any, Dict, Optional
 from archaeologist.config import settings
 from archaeologist.store.vector_store import SearchResult
 
@@ -211,3 +211,48 @@ class CodeArchaeologistSynthesizer:
                         "⚠️ *Gemini API is temporarily experiencing high demand (503). Showing raw git diff:*\n\n"
                         f"```diff\n{diff_content[:2000]}\n```"
                     )
+
+    def generate_architecture_diagram(self, chunks: List[Any], dep_graph: Any = None) -> str:
+        """Generates a valid Mermaid.js flowchart string visualizing component architecture & dependencies."""
+        if not chunks:
+            return "graph TD\n    A[No Indexed Chunks Available]"
+            
+        file_map = {}
+        for chunk in chunks[:30]:
+            fp = getattr(chunk, 'file_path', 'main')
+            name = getattr(chunk, 'name', 'module')
+            ctype = getattr(chunk, 'chunk_type', 'block')
+            if fp not in file_map:
+                file_map[fp] = []
+            file_map[fp].append((name, ctype))
+            
+        diagram_lines = ["graph TD"]
+        idx = 0
+        node_ids = {}
+        connections = set()
+        
+        for fp, symbols in list(file_map.items())[:6]:
+            subgraph_name = fp.replace("/", "_").replace(".", "_").replace("-", "_")
+            diagram_lines.append(f"    subgraph {subgraph_name}[\"{fp}\"]")
+            for name, ctype in symbols[:4]:
+                idx += 1
+                nid = f"N{idx}"
+                node_ids[name] = nid
+                label = f"{name} ({ctype})"
+                diagram_lines.append(f"        {nid}[\"{label}\"]")
+            diagram_lines.append("    end")
+            
+        if dep_graph and hasattr(dep_graph, 'call_graph'):
+            for caller, callees in dep_graph.call_graph.items():
+                if caller in node_ids:
+                    for callee in callees:
+                        if callee in node_ids and caller != callee:
+                            connections.add(f"    {node_ids[caller]} --> {node_ids[callee]}")
+                            
+        if not connections and len(node_ids) > 1:
+            nlist = list(node_ids.values())
+            for i in range(min(5, len(nlist) - 1)):
+                connections.add(f"    {nlist[i]} -.-> {nlist[i+1]}")
+                
+        diagram_lines.extend(sorted(list(connections)))
+        return "\n".join(diagram_lines)

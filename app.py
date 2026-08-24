@@ -727,16 +727,46 @@ elif st.session_state.nav_page == "⛏️ Excavation Workspace" and st.session_s
                 ).properties(height=280)
                 st.altair_chart(type_chart, use_container_width=True)
                 
+            # Row 3: Leaderboard & Architecture Diagram
             st.markdown("---")
+            col_l, col_d = st.columns([1, 1.2])
             
-            # Row 3: Leaderboard
-            st.markdown("#### 🏆 Leaderboard: Top Files by AST Chunks")
-            file_chunk_counts = {}
-            for chunk in chunks:
-                file_chunk_counts[chunk.file_path] = file_chunk_counts.get(chunk.file_path, 0) + 1
-            top_files = sorted(file_chunk_counts.items(), key=lambda x: x[1], reverse=True)[:6]
-            
-            leader_df = pd.DataFrame(top_files, columns=["File Path", "AST Chunks"])
-            st.table(leader_df)
+            with col_l:
+                st.markdown("#### 🏆 Leaderboard: Top Files by AST Chunks")
+                file_chunk_counts = {}
+                for chunk in chunks:
+                    file_chunk_counts[chunk.file_path] = file_chunk_counts.get(chunk.file_path, 0) + 1
+                top_files = sorted(file_chunk_counts.items(), key=lambda x: x[1], reverse=True)[:6]
+                
+                leader_df = pd.DataFrame(top_files, columns=["File Path", "AST Chunks"])
+                st.table(leader_df)
+                
+            with col_d:
+                st.markdown("#### 🏛️ Codebase Component Architecture Map")
+                synthesizer = CodeArchaeologistSynthesizer()
+                dep_graph = getattr(st.session_state.retriever, 'dep_graph', None)
+                diagram_code = synthesizer.generate_architecture_diagram(chunks, dep_graph)
+                
+                with st.container(border=True):
+                    st.markdown("```mermaid\n" + diagram_code + "\n```")
+                    
+            # Row 4: Live RAG Benchmark Evaluation Suite
+            st.markdown("---")
+            st.markdown("#### 📊 RAG Triad Benchmark Evaluation")
+            if st.button("⚡ Run Live RAG Evaluation Benchmark", type="secondary"):
+                with st.spinner("Evaluating Context Precision, Recall & Faithfulness metrics..."):
+                    from evals.evaluate_rag import RAGEvaluator
+                    evaluator = RAGEvaluator(retriever=st.session_state.retriever)
+                    eval_metrics = evaluator.evaluate_benchmark()
+                    
+                    e_col1, e_col2, e_col3, e_col4 = st.columns(4)
+                    with e_col1:
+                        st.metric("Context Precision", f"{eval_metrics['context_precision']*100:.1f}%")
+                    with e_col2:
+                        st.metric("Context Recall", f"{eval_metrics['context_recall']*100:.1f}%")
+                    with e_col3:
+                        st.metric("RAG Triad F1-Score", f"{eval_metrics['rag_triad_f1']*100:.1f}%")
+                    with e_col4:
+                        st.metric("Avg Search Latency", f"{eval_metrics['avg_latency_sec']}s")
         else:
             st.warning("No codebase chunks are currently loaded in the store cache. Excavate a repository to view analytics.")
