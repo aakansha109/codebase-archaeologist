@@ -134,15 +134,26 @@ class HybridVectorStore:
                 print(f"Warning: Failed to load lineage cache: {e}")
 
     def _init_collection(self):
-        """Creates Qdrant collection if not exists."""
-        collections = [c.name for c in self.client.get_collections().collections]
-        if self.collection_name not in collections:
-            import os
-            vector_size = 768 if os.getenv("GEMINI_API_KEY") else 384
-            self.client.create_collection(
-                collection_name=self.collection_name,
-                vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE)
-            )
+        """Creates Qdrant collection if not exists, or recreates if vector dimension mismatches."""
+        import os
+        expected_size = 768 if os.getenv("GEMINI_API_KEY") else 384
+        try:
+            collections = [c.name for c in self.client.get_collections().collections]
+            if self.collection_name in collections:
+                info = self.client.get_collection(self.collection_name)
+                current_size = info.config.params.vectors.size
+                if current_size != expected_size:
+                    print(f"Vector dimension changed ({current_size} -> {expected_size}). Recreating collection...")
+                    self.client.delete_collection(self.collection_name)
+                    collections.remove(self.collection_name)
+            
+            if self.collection_name not in collections:
+                self.client.create_collection(
+                    collection_name=self.collection_name,
+                    vectors_config=VectorParams(size=expected_size, distance=Distance.COSINE)
+                )
+        except Exception as e:
+            print(f"Warning initializing Qdrant collection: {e}")
 
     def _get_vector_size(self) -> int:
         """Determines the vector size of the current collection, defaulting based on API availability."""
@@ -315,18 +326,27 @@ class HybridVectorStore:
                     
         if query_vec is not None:
             try:
-                dense_hits = self.client.search(
-                    collection_name=self.collection_name,
-                    query_vector=list(query_vec),
-                    limit=top_k * 2
-                )
+                dense_hits = []
+                if hasattr(self.client, "query_points"):
+                    res = self.client.query_points(
+                        collection_name=self.collection_name,
+                        query=list(query_vec),
+                        limit=top_k * 2
+                    )
+                    dense_hits = getattr(res, "points", [])
+                elif hasattr(self.client, "search"):
+                    dense_hits = self.client.search(
+                        collection_name=self.collection_name,
+                        query_vector=list(query_vec),
+                        limit=top_k * 2
+                    )
                 for rank, hit in enumerate(dense_hits):
                     cid = hit.payload.get("chunk_id")
                     if cid:
                         dense_results.append(cid)
                         rrf_scores[cid] = rrf_scores.get(cid, 0.0) + (1.0 / (k + rank + 1))
             except Exception as e:
-                pass
+                print(f"Warning during Qdrant dense vector search: {e}")
                 
         # 2. Sparse (BM25) Keyword Retrieval
         if self.bm25 and self.chunk_ids:

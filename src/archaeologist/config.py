@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 # Load environment configurations
 load_dotenv()
 load_dotenv(Path.cwd() / ".env.local")
-load_dotenv(Path.cwd().parent / "neural-portfolio" / ".env.local")
 
 class Settings(BaseModel):
     """Configuration settings for Codebase Archaeologist."""
@@ -21,15 +20,16 @@ class Settings(BaseModel):
     EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
     DENSE_VECTOR_SIZE: int = 384
     
-    # Chunking thresholds
+    # Ingestion & Chunking thresholds
     MAX_CHUNK_LINES: int = 250
     MIN_CHUNK_LINES: int = 3
+    MAX_FILES_PER_REPO: int = 300
     
     # LLM Settings
     LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "gemini")  # Options: gemini, openai, ollama
-    GEMINI_MODEL: str = "gemini-3.5-flash"
-    OPENAI_MODEL: str = "gpt-4o-mini"
-    OLLAMA_MODEL: str = "llama3"
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "llama3")
 
 settings = Settings()
 

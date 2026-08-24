@@ -9,3 +9,5 @@ repos/
 dist/
 build/
 .pytest_cache/
+*.pdf
+

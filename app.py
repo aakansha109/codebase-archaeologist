@@ -279,6 +279,8 @@ with st.sidebar:
             st.error(f"Failed to index repository: {error_msg}")
         elif st.session_state.ingested:
             st.success("Codebase successfully indexed into Qdrant!")
+            if st.session_state.stats.get("truncated"):
+                st.warning(f"⚠️ Note: Repository was capped at top {st.session_state.stats.get('files_parsed')} files.")
             st.rerun()
             
     if st.session_state.ingested and st.session_state.stats:
@@ -485,6 +487,9 @@ elif st.session_state.nav_page == "⛏️ Excavation Workspace" and st.session_s
             chunk1 = next(r for r in st.session_state.last_results if f"{r.name} ({r.chunk_type})" == choice1)
             chunk2 = next(r for r in st.session_state.last_results if f"{r.name} ({r.chunk_type})" == choice2)
             
+            rating1 = "🔥 Strong Match" if chunk1.score >= 0.03 else "⚡ Relevant Match"
+            rating2 = "🔥 Strong Match" if chunk2.score >= 0.03 else "⚡ Relevant Match"
+            
             col_c1, col_c2 = st.columns(2)
             with col_c1:
                 st.markdown(f"""
@@ -492,7 +497,7 @@ elif st.session_state.nav_page == "⛏️ Excavation Workspace" and st.session_s
                     <span class="badge" style="background:#38bdf8;">{chunk1.chunk_type.upper()}</span>
                     <h4><code>{chunk1.name}</code></h4>
                     <p style="font-size:0.9rem; color:#94a3b8;"><strong>File</strong>: <code>{chunk1.file_path}</code> (L{chunk1.start_line}-{chunk1.end_line})</p>
-                    <p style="font-size:0.9rem; color:#94a3b8;"><strong>RRF Score</strong>: <code style="color:#38bdf8; font-weight:bold;">{chunk1.score}</code></p>
+                    <p style="font-size:0.9rem; color:#38bdf8; font-weight:bold;"><strong>Relevance</strong>: {rating1} (Score: {chunk1.score})</p>
                 </div>
                 """, unsafe_allow_html=True)
                 st.code(chunk1.content, language=chunk1.language)
@@ -502,7 +507,7 @@ elif st.session_state.nav_page == "⛏️ Excavation Workspace" and st.session_s
                     <span class="badge" style="background:#a855f7;">{chunk2.chunk_type.upper()}</span>
                     <h4><code>{chunk2.name}</code></h4>
                     <p style="font-size:0.9rem; color:#94a3b8;"><strong>File</strong>: <code>{chunk2.file_path}</code> (L{chunk2.start_line}-{chunk2.end_line})</p>
-                    <p style="font-size:0.9rem; color:#94a3b8;"><strong>RRF Score</strong>: <code style="color:#a855f7; font-weight:bold;">{chunk2.score}</code></p>
+                    <p style="font-size:0.9rem; color:#a855f7; font-weight:bold;"><strong>Relevance</strong>: {rating2} (Score: {chunk2.score})</p>
                 </div>
                 """, unsafe_allow_html=True)
                 st.code(chunk2.content, language=chunk2.language)

@@ -28,7 +28,10 @@ class CodebaseRetriever:
             progress_callback(f"Parsed {len(commits)} historical commits. Chunking code files via AST...")
             
         all_chunks: List[CodeChunk] = []
-        valid_extensions = {".py", ".js", ".jsx", ".ts", ".tsx", ".md"}
+        valid_extensions = {
+            ".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", 
+            ".java", ".c", ".cpp", ".h", ".cs", ".html", ".css", ".json", ".md"
+        }
         exclude_dirs = {
             "node_modules", "dist", "build", "__pycache__", "tests", "docs",
             "screenshots", "docker", "releases", "report", "evals", "scripts",
@@ -36,13 +39,15 @@ class CodebaseRetriever:
         }
         
         file_count = 0
-        max_files = 150
+        max_files = settings.MAX_FILES_PER_REPO
+        truncated = False
         
         for root, dirs, files in os.walk(repo_path):
             # Ignore hidden, build, test, and config folders
             dirs[:] = [d for d in dirs if not d.startswith(".") and d.lower() not in exclude_dirs]
             for file in files:
                 if file_count >= max_files:
+                    truncated = True
                     break
                 file_path = Path(root) / file
                 if file_path.suffix.lower() in valid_extensions:
@@ -53,10 +58,11 @@ class CodebaseRetriever:
                     except Exception as e:
                         pass
             if file_count >= max_files:
+                truncated = True
                 break
                         
         if progress_callback:
-            progress_callback(f"Generated {len(all_chunks)} AST code chunks. Indexing into Qdrant Hybrid Store...")
+            progress_callback(f"Generated {len(all_chunks)} AST code chunks across {file_count} files. Indexing into Qdrant Hybrid Store...")
             
         self.store.ingest_chunks(all_chunks, lineage_map)
         
@@ -66,7 +72,9 @@ class CodebaseRetriever:
         stats = {
             "repo_path": str(repo_path),
             "commits_mined": len(commits),
-            "chunks_indexed": len(all_chunks)
+            "chunks_indexed": len(all_chunks),
+            "files_parsed": file_count,
+            "truncated": truncated
         }
         if progress_callback:
             progress_callback("Ingestion complete!")
@@ -76,12 +84,13 @@ class CodebaseRetriever:
         """Retrieves top matches and attaches Git lineage dynamically at query time."""
         results = self.store.search(query, top_k=top_k)
         
-        # Load GitExtractor if not present (subsequent CLI executions)
-        if not self.extractor:
-            repo_name = "paperclip"
-            local_dir = settings.REPOS_DIR / repo_name
-            if local_dir.exists():
-                self.extractor = GitExtractor(str(local_dir))
+        # Load GitExtractor dynamically if not present (e.g. across CLI runs)
+        if not self.extractor and settings.REPOS_DIR.exists():
+            existing_repos = [d for d in settings.REPOS_DIR.iterdir() if d.is_dir()]
+            if existing_repos:
+                # Pick the most recently modified repo folder
+                latest_repo = max(existing_repos, key=lambda p: p.stat().st_mtime)
+                self.extractor = GitExtractor(str(latest_repo))
                 
         for r in results:
             if not r.lineage and self.extractor:
