@@ -786,5 +786,31 @@ elif st.session_state.nav_page == "⛏️ Excavation Workspace" and st.session_s
                         st.metric("RAG Triad F1-Score", f"{eval_metrics['rag_triad_f1']*100:.1f}%")
                     with e_col4:
                         st.metric("Avg Search Latency", f"{eval_metrics['avg_latency_sec']}s")
+                        
+            # Row 5: Report Exporter
+            st.markdown("---")
+            st.markdown("#### 📥 Export Archaeological Technical Report")
+            from archaeologist.query.report_exporter import ArchaeologicalReportExporter
+            exporter = ArchaeologicalReportExporter()
+            
+            stats_data = st.session_state.stats or {"repo_path": "Codebase", "commits_mined": 0, "chunks_indexed": len(chunks), "files_parsed": 0}
+            md_report = exporter.generate_markdown_report(stats_data, chunks, health, diagram_code)
+            html_report = exporter.generate_html_report(stats_data, chunks, health, diagram_code)
+            
+            d_col1, d_col2 = st.columns(2)
+            with d_col1:
+                st.download_button(
+                    label="📄 Download Markdown Report (.md)",
+                    data=md_report,
+                    file_name="archaeology_report.md",
+                    mime="text/markdown"
+                )
+            with d_col2:
+                st.download_button(
+                    label="🌐 Download HTML Report (.html)",
+                    data=html_report,
+                    file_name="archaeology_report.html",
+                    mime="text/html"
+                )
         else:
             st.warning("No codebase chunks are currently loaded in the store cache. Excavate a repository to view analytics.")

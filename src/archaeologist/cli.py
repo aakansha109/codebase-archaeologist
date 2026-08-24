@@ -107,5 +107,62 @@ def eval():
     
     console.print(table)
 
+@app.command()
+def health():
+    """Audit codebase health, AST complexity, and technical debt risk."""
+    console.print(Panel.fit("[bold cyan]🏥 Auditing Codebase Technical Debt & Health...[/bold cyan]", border_style="cyan"))
+    
+    retriever = CodebaseRetriever()
+    from archaeologist.ingest.health_auditor import CodebaseHealthAuditor
+    auditor = CodebaseHealthAuditor()
+    chunks = list(retriever.store.chunks.values()) if hasattr(retriever.store, 'chunks') else []
+    lineage_map = getattr(retriever.store, 'lineage_map', {})
+    
+    health_data = auditor.analyze_health(chunks, lineage_map)
+    
+    table = Table(title="🏥 Codebase Health & Technical Debt Scorecard", show_header=True, header_style="bold cyan")
+    table.add_column("Metric", style="dim")
+    table.add_column("Value", style="bold green")
+    
+    table.add_row("Health Index Score", f"{health_data['health_score']}/100")
+    table.add_row("Risk Assessment Level", health_data['risk_level'])
+    table.add_row("Average AST Chunk Size", f"{health_data['avg_chunk_lines']} lines")
+    table.add_row("Oversized Chunks (>80 lines)", f"{health_data['oversized_chunks']} ({health_data.get('oversized_ratio_percent', 0)}%)")
+    
+    console.print(table)
+
+@app.command()
+def export(
+    output: str = typer.Option("archaeology_report.md", "--output", "-o", help="Output report filepath (.md or .html)")
+):
+    """Export comprehensive archaeological technical report to disk."""
+    console.print(f"[bold yellow]📝 Exporting Archaeological Report to:[/bold yellow] `{output}`")
+    
+    retriever = CodebaseRetriever()
+    from archaeologist.ingest.health_auditor import CodebaseHealthAuditor
+    from archaeologist.query.report_exporter import ArchaeologicalReportExporter
+    
+    chunks = list(retriever.store.chunks.values()) if hasattr(retriever.store, 'chunks') else []
+    lineage_map = getattr(retriever.store, 'lineage_map', {})
+    stats = getattr(retriever, 'stats', {"repo_path": "Codebase", "commits_mined": 0, "chunks_indexed": len(chunks), "files_parsed": 0})
+    
+    auditor = CodebaseHealthAuditor()
+    health_data = auditor.analyze_health(chunks, lineage_map)
+    
+    synthesizer = CodeArchaeologistSynthesizer()
+    dep_graph = getattr(retriever, 'dep_graph', None)
+    diagram_code = synthesizer.generate_architecture_diagram(chunks, dep_graph)
+    
+    exporter = ArchaeologicalReportExporter()
+    if output.endswith(".html"):
+        content = exporter.generate_html_report(stats, chunks, health_data, diagram_code)
+    else:
+        content = exporter.generate_markdown_report(stats, chunks, health_data, diagram_code)
+        
+    with open(output, "w", encoding="utf-8") as f:
+        f.write(content)
+        
+    console.print(f"[bold green]✔ Report successfully exported to `{output}`![/bold green]")
+
 if __name__ == "__main__":
     app()
