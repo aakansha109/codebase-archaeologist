@@ -359,15 +359,15 @@ class HybridVectorStore:
                     cid = self.chunk_ids[idx]
                     rrf_scores[cid] = rrf_scores.get(cid, 0.0) + (1.0 / (k + rank + 1))
                     
-        # Sort combined RRF scores
-        ranked_cids = sorted(rrf_scores.keys(), key=lambda cid: rrf_scores[cid], reverse=True)[:top_k]
+        # Sort combined RRF scores to get candidate pool
+        candidate_cids = sorted(rrf_scores.keys(), key=lambda cid: rrf_scores[cid], reverse=True)[:top_k * 3]
         
-        results = []
-        for cid in ranked_cids:
+        candidates = []
+        for cid in candidate_cids:
             chunk = self.chunks.get(cid)
             if chunk:
                 lineage = self.lineage_map.get(chunk.file_path, [])
-                results.append(SearchResult(
+                candidates.append(SearchResult(
                     chunk_id=chunk.chunk_id,
                     file_path=chunk.file_path,
                     name=chunk.name,
@@ -381,7 +381,39 @@ class HybridVectorStore:
                     lineage=lineage
                 ))
                 
-        return results
+        return self.rerank(query, candidates, top_k)
+
+    def rerank(self, query: str, candidates: List[SearchResult], top_k: int) -> List[SearchResult]:
+        """Cross-encoder style term-density and symbol boost reranking stage."""
+        if not candidates:
+            return []
+            
+        query_tokens = set(self._tokenize(query))
+        if not query_tokens:
+            return candidates[:top_k]
+            
+        scored_candidates = []
+        for item in candidates:
+            base_score = item.score
+            
+            # Exact symbol name match boost
+            name_tokens = set(self._tokenize(item.name))
+            name_overlap = len(query_tokens.intersection(name_tokens))
+            symbol_boost = name_overlap * 0.05
+            
+            # Content token density score
+            content_tokens = self._tokenize(item.content)
+            matched_content_tokens = sum(1 for t in content_tokens if t in query_tokens)
+            density_score = (matched_content_tokens / (len(content_tokens) + 10)) * 0.03
+            
+            final_score = round(base_score + symbol_boost + density_score, 4)
+            
+            # Create updated SearchResult with reranked score
+            updated = item.model_copy(update={"score": final_score})
+            scored_candidates.append(updated)
+            
+        scored_candidates.sort(key=lambda x: x.score, reverse=True)
+        return scored_candidates[:top_k]
 
     def clear_cache(self):
         """Wipes the database collection and clears all local caches on disk and in memory."""

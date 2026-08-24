@@ -86,5 +86,26 @@ def timeline(
         
     console.print(table)
 
+@app.command()
+def eval():
+    """Run automated RAG Triad benchmark evaluation (Context Precision, Recall, Faithfulness)."""
+    console.print(Panel.fit("[bold magenta]📊 Executing Archaeological RAG Benchmark Evaluation...[/bold magenta]", border_style="magenta"))
+    
+    from evals.evaluate_rag import RAGEvaluator
+    evaluator = RAGEvaluator()
+    metrics = evaluator.evaluate_benchmark()
+    
+    table = Table(title="🏛️ Archaeological RAG Triad Benchmark Scores", show_header=True, header_style="bold green")
+    table.add_column("Metric", style="cyan")
+    table.add_column("Score / Value", style="bold yellow")
+    
+    table.add_row("Evaluated Queries", str(metrics["eval_count"]))
+    table.add_row("Context Precision", f"{metrics['context_precision'] * 100:.1f}%")
+    table.add_row("Context Recall", f"{metrics['context_recall'] * 100:.1f}%")
+    table.add_row("RAG Triad F1-Score", f"{metrics['rag_triad_f1'] * 100:.1f}%")
+    table.add_row("Average Search Latency", f"{metrics['avg_latency_sec']}s")
+    
+    console.print(table)
+
 if __name__ == "__main__":
     app()

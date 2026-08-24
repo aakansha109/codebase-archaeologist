@@ -150,3 +150,36 @@ class GitExtractor:
             return diff_text
         except Exception as e:
             return f"Error retrieving diff: {e}"
+
+    def get_chunk_lineage(self, rel_file_path: str, start_line: int, end_line: int, max_commits: int = 5) -> List[CommitInfo]:
+        """Mines precise line-range Git blame history for a specific function/class AST chunk."""
+        if not self.repo or start_line <= 0 or end_line < start_line:
+            return self.get_file_lineage(rel_file_path)
+            
+        normalized = rel_file_path.replace("\\", "/")
+        try:
+            line_arg = f"{start_line},{end_line}:{normalized}"
+            log_output = self.repo.git.log("-L", line_arg, "-n", str(max_commits), "--pretty=format:%h|%an|%ad|%s", "--date=iso")
+            
+            commits: List[CommitInfo] = []
+            if log_output.strip():
+                for line in log_output.split("\n"):
+                    if "|" in line and not line.startswith("diff --git"):
+                        parts = line.strip().split("|", 3)
+                        if len(parts) == 4:
+                            h, author, dt, msg = parts
+                            commits.append(CommitInfo(
+                                commit_hash=h[:8],
+                                author=author or "Unknown",
+                                date=dt,
+                                message=msg.strip(),
+                                files_changed=[normalized]
+                            ))
+                            if len(commits) >= max_commits:
+                                break
+            if commits:
+                return commits
+        except Exception:
+            pass
+            
+        return self.get_file_lineage(normalized)

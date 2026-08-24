@@ -6,6 +6,8 @@ from archaeologist.ingest.ast_parser import ASTCodeParser, CodeChunk
 from archaeologist.ingest.git_extractor import GitExtractor
 from archaeologist.store.vector_store import HybridVectorStore, SearchResult
 
+from archaeologist.ingest.dependency_graph import CodeDependencyGraph
+
 class CodebaseRetriever:
     """Orchestrates ingestion of code files + Git history and multi-index query retrieval."""
     
@@ -13,6 +15,7 @@ class CodebaseRetriever:
         self.store = store or HybridVectorStore()
         self.parser = ASTCodeParser()
         self.extractor: GitExtractor = None
+        self.dep_graph: CodeDependencyGraph = None
 
     def ingest_repository(self, target: str, progress_callback=None) -> Dict[str, Any]:
         """Clones repo, parses AST chunks, mines commit lineage, and indexes into Qdrant."""
@@ -62,8 +65,10 @@ class CodebaseRetriever:
                 break
                         
         if progress_callback:
-            progress_callback(f"Generated {len(all_chunks)} AST code chunks across {file_count} files. Indexing into Qdrant Hybrid Store...")
+            progress_callback(f"Generated {len(all_chunks)} AST code chunks across {file_count} files. Building Code Dependency Graph & Indexing...")
             
+        # Build Code Dependency Graph
+        self.dep_graph = CodeDependencyGraph(all_chunks)
         self.store.ingest_chunks(all_chunks, lineage_map)
         
         # Re-populate lineage in search results during lookup
@@ -93,15 +98,32 @@ class CodebaseRetriever:
                 self.extractor = GitExtractor(str(latest_repo))
                 
         for r in results:
+            if self.extractor:
+                try:
+                    lineage = self.extractor.get_chunk_lineage(r.file_path, r.start_line, r.end_line)
+                    if lineage:
+                        r.lineage = [c.model_dump() if hasattr(c, 'model_dump') else c for c in lineage]
+                except Exception:
+                    pass
+                    
             if not r.lineage and self.extractor:
                 try:
                     r.lineage = [c.model_dump() if hasattr(c, 'model_dump') else c 
                                  for c in self.extractor.get_file_lineage(r.file_path)]
                 except Exception:
                     pass
+                    
+            if self.dep_graph:
+                try:
+                    deps = self.dep_graph.get_related_symbols(r.name, r.file_path)
+                    r.metadata["dependencies"] = deps
+                except Exception:
+                    pass
+                    
         return results
 
     def clear_cache(self):
         """Delegates cache clearing to the vector store."""
         self.store.clear_cache()
         self.extractor = None
+        self.dep_graph = None

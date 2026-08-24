@@ -184,6 +184,20 @@ def render_evidence_card(ev):
     else:
         lineage_html = "<div style='font-size:0.8rem; color:#94a3b8;'>No recent commit lineage available.</div>"
 
+    # Dependency graph metadata
+    deps_html = ""
+    deps = ev.metadata.get("dependencies", {}) if ev.metadata else {}
+    if deps:
+        callees = deps.get("callees", [])
+        callers = deps.get("callers", [])
+        if callees or callers:
+            deps_html += "<div style='margin-top:6px; font-size:0.8rem; color:#94a3b8;'>"
+            if callers:
+                deps_html += f"<strong>Callers:</strong> <code>{', '.join(callers[:3])}</code> "
+            if callees:
+                deps_html += f"<strong>Callees:</strong> <code>{', '.join(callees[:3])}</code>"
+            deps_html += "</div>"
+
     st.markdown(f"""
     <div class="glass-card" style="margin-bottom: 1rem; border-left: 4px solid #818cf8;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
@@ -192,8 +206,9 @@ def render_evidence_card(ev):
         </div>
         <h4 style="margin: 0 0 6px 0; color:#f8fafc; font-family:'Space Grotesk', sans-serif;"><code>{ev.name}</code></h4>
         <p style="font-size:0.85rem; color:#94a3b8; margin: 4px 0;">📁 <strong>File Path:</strong> <code>{ev.file_path}</code> (Lines {ev.start_line} - {ev.end_line})</p>
+        {deps_html}
         <div style="margin-top:8px; border-top: 1px solid rgba(255,255,255,0.06); padding-top:8px;">
-            <p style="font-size:0.85rem; color:#f8fafc; font-weight:600; margin-bottom:4px;">⏳ Code Evolution History:</p>
+            <p style="font-size:0.85rem; color:#f8fafc; font-weight:600; margin-bottom:4px;">⏳ Code Evolution History (Line-Range Blame):</p>
             {lineage_html}
         </div>
     </div>
