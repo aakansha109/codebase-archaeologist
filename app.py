@@ -703,6 +703,24 @@ elif st.session_state.nav_page == "⛏️ Excavation Workspace" and st.session_s
                 
             st.markdown("---")
             
+            # Health & Technical Debt Scorecard
+            from archaeologist.ingest.health_auditor import CodebaseHealthAuditor
+            auditor = CodebaseHealthAuditor()
+            health = auditor.analyze_health(chunks, st.session_state.retriever.store.lineage_map)
+            
+            st.markdown("#### 🏥 Codebase Health & Technical Debt Audit")
+            h_col1, h_col2, h_col3, h_col4 = st.columns(4)
+            with h_col1:
+                st.metric("Health Index Score", f"{health['health_score']}/100")
+            with h_col2:
+                st.metric("Risk Assessment", health['risk_level'])
+            with h_col3:
+                st.metric("Avg Chunk Size", f"{health['avg_chunk_lines']} lines")
+            with h_col4:
+                st.metric("Oversized Chunks (>80L)", f"{health['oversized_chunks']} ({health['oversized_ratio_percent']}%)")
+                
+            st.markdown("---")
+            
             # Row 2: Charts
             chart_col1, chart_col2 = st.columns(2)
             
