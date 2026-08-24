@@ -5,10 +5,21 @@ from archaeologist.query.retriever import CodebaseRetriever
 from archaeologist.query.synthesizer import CodeArchaeologistSynthesizer
 from archaeologist.ingest.health_auditor import CodebaseHealthAuditor
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(
     title="🏛️ Codebase Archaeologist REST API",
     description="Headless RAG & Vector Search API for Git repository AST chunking, lineage querying, and health auditing.",
     version="0.2.0"
+)
+
+# Enable CORS for Vercel origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Global shared retriever instance
@@ -67,6 +78,18 @@ def get_codebase_health():
         lineage_map = getattr(retriever.store, 'lineage_map', {})
         health_data = auditor.analyze_health(chunks, lineage_map)
         return health_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/diagram")
+def get_architecture_diagram():
+    """Returns valid Mermaid.js component architecture diagram code."""
+    try:
+        synthesizer = CodeArchaeologistSynthesizer()
+        chunks = list(retriever.store.chunks.values()) if hasattr(retriever.store, 'chunks') else []
+        dep_graph = getattr(retriever, 'dep_graph', None)
+        diagram_code = synthesizer.generate_architecture_diagram(chunks, dep_graph)
+        return {"diagram": diagram_code}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
