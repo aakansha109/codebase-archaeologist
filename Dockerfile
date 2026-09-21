@@ -1,32 +1,27 @@
-# Build & Runtime Stage
+# Production FastAPI Backend Container
 FROM python:3.10-slim
 
-# Install system dependencies (Git, build essentials)
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     build-essential \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy dependency definition
-COPY pyproject.toml requirements.txt ./
+# Copy full application codebase including src/
+COPY . .
 
-# Install Python packages
+# Install Python packages & editable package
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir -e .
 
-# Copy application source code
-COPY . .
-
-# Create persistent storage directories
+# Create persistent workspace directories
 RUN mkdir -p /app/qdrant_db /app/repos
 
-# Expose Streamlit default port
-EXPOSE 8501
+ENV PORT=8000
+EXPOSE 8000
 
-# Health check endpoint
-HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health || exit 1
-
-# Launch Streamlit server
-ENTRYPOINT ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# Launch FastAPI REST Server (supporting Railway dynamic PORT)
+CMD ["sh", "-c", "uvicorn archaeologist.api.server:app --host 0.0.0.0 --port ${PORT:-8000}"]
