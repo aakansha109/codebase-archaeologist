@@ -13,9 +13,9 @@ WORKDIR /app
 # Copy full application codebase including src/
 COPY . .
 
-# Install Python packages & editable package
+# Install Python packages & application package
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir .
 
 # Create persistent workspace directories
 RUN mkdir -p /app/qdrant_db /app/repos
