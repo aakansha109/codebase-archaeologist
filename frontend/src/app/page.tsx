@@ -26,24 +26,34 @@ export default function Home() {
   const [answer, setAnswer] = useState('');
   const [evidence, setEvidence] = useState<EvidenceChunk[]>([]);
   
+  const [ingestError, setIngestError] = useState('');
+  
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
   const handleIngest = async () => {
     if (!targetRepo) return;
     setIngesting(true);
     setIngestedStats(null);
+    setIngestError('');
     try {
       const res = await fetch(`${API_URL}/api/v1/ingest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ target: targetRepo }),
       });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Server returned ${res.status}: ${errText}`);
+      }
       const data = await res.json();
       if (data.success) {
         setIngestedStats(data.stats);
+      } else {
+        setIngestError(data.detail || 'Ingestion failed.');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setIngestError(e.message || 'Failed to connect to backend API server. Make sure Railway backend URL is configured.');
     } finally {
       setIngesting(false);
     }
@@ -129,6 +139,13 @@ export default function Home() {
                 )}
               </button>
             </div>
+
+            {ingestError && (
+              <div className="bg-red-950/80 border border-red-500/40 rounded-lg p-3 text-xs text-red-300 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <div>{ingestError}</div>
+              </div>
+            )}
 
             {ingestedStats && (
               <div className="bg-slate-900/90 border border-emerald-500/30 rounded-lg p-4 space-y-2 text-xs">
