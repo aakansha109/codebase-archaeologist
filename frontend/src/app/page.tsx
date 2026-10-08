@@ -28,10 +28,15 @@ export default function Home() {
   
   const [ingestError, setIngestError] = useState('');
   
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  let formattedUrl = (rawApiUrl.startsWith('http://') || rawApiUrl.startsWith('https://'))
+    ? rawApiUrl
+    : `https://${rawApiUrl}`;
+  const API_URL = formattedUrl.replace(/\/+$/, '');
 
   const handleIngest = async () => {
-    if (!targetRepo) return;
+    const cleanRepo = targetRepo.trim();
+    if (!cleanRepo) return;
     setIngesting(true);
     setIngestedStats(null);
     setIngestError('');
@@ -39,7 +44,7 @@ export default function Home() {
       const res = await fetch(`${API_URL}/api/v1/ingest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target: targetRepo }),
+        body: JSON.stringify({ target: cleanRepo }),
       });
       if (!res.ok) {
         const errText = await res.text();
