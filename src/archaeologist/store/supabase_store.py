@@ -42,7 +42,7 @@ class SupabaseVectorStore:
             print("Warning: Supabase credentials not set. Operating in local memory fallback mode.")
             return
 
-        # Prepare records for Supabase REST endpoint
+        # Prepare records for Supabase REST endpoint in safe batches of 50
         endpoint = f"{self.supabase_url}/rest/v1/{self.table_name}"
         records = []
         for chunk in chunks:
@@ -53,18 +53,21 @@ class SupabaseVectorStore:
                 "language": chunk.language,
                 "chunk_type": chunk.chunk_type,
                 "name": chunk.name,
-                "content": chunk.content,
+                "content": chunk.content[:4000],
                 "start_line": chunk.start_line,
                 "end_line": chunk.end_line,
                 "docstring": chunk.docstring,
                 "metadata": chunk.metadata,
-                "lineage": lineage
+                "lineage": lineage[:5]
             })
             
         try:
-            res = requests.post(endpoint, headers=self.headers, json=records, timeout=10)
-            if res.status_code not in (200, 201):
-                print(f"Warning: Supabase insert status {res.status_code}: {res.text}")
+            batch_size = 50
+            for start_idx in range(0, len(records), batch_size):
+                b_records = records[start_idx:start_idx + batch_size]
+                res = requests.post(endpoint, headers=self.headers, json=b_records, timeout=15)
+                if res.status_code not in (200, 201):
+                    print(f"Warning: Supabase insert status {res.status_code}: {res.text}")
         except Exception as e:
             print(f"Warning inserting into Supabase: {e}")
 

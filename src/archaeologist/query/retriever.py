@@ -55,6 +55,9 @@ class CodebaseRetriever:
                 file_path = Path(root) / file
                 if file_path.suffix.lower() in valid_extensions:
                     try:
+                        # Skip oversized data or model files (> 300KB) to prevent payload explosion
+                        if file_path.stat().st_size > 300_000:
+                            continue
                         chunks = self.parser.parse_file(file_path, relative_to=repo_path)
                         all_chunks.extend(chunks)
                         file_count += 1

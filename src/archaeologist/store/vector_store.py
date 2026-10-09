@@ -248,9 +248,11 @@ class HybridVectorStore:
             # Lineage
             lineage = [c.model_dump() if hasattr(c, 'model_dump') else c for c in lineage_map.get(chunk.file_path, [])]
             
-            # Qdrant point
+            # Qdrant point payload with capped content & lineage to prevent oversized HTTP payloads
             payload = chunk.model_dump()
-            payload["lineage"] = lineage
+            if len(payload.get("content", "")) > 4000:
+                payload["content"] = payload["content"][:4000] + "\n... [truncated for vector payload]"
+            payload["lineage"] = lineage[:5]
             
             # Integer ID hash for Qdrant point ID
             point_id = abs(hash(chunk.chunk_id)) % (2**63 - 1)
@@ -260,9 +262,12 @@ class HybridVectorStore:
                 payload=payload
             ))
             
-        # Upload points to Qdrant
+        # Upload points to Qdrant in safe batches of 50 points (stays well within 32MB payload limit)
         if points:
-            self.client.upsert(collection_name=self.collection_name, points=points)
+            batch_size = 50
+            for b_start in range(0, len(points), batch_size):
+                b_points = points[b_start:b_start + batch_size]
+                self.client.upsert(collection_name=self.collection_name, points=b_points)
             
         # Build BM25 index
         if corpus_tokens:
