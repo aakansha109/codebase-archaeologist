@@ -79,3 +79,25 @@ CREATE POLICY "Allow public insert access"
 ON public.code_chunks FOR INSERT
 WITH CHECK (true);
 
+-- Excavation Query & Analysis History Table
+CREATE TABLE IF NOT EXISTS public.excavation_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    repo_url TEXT NOT NULL,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE public.excavation_history ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read excavation_history" ON public.excavation_history;
+CREATE POLICY "Allow public read excavation_history"
+ON public.excavation_history FOR SELECT
+USING (true);
+
+DROP POLICY IF EXISTS "Allow public insert excavation_history" ON public.excavation_history;
+CREATE POLICY "Allow public insert excavation_history"
+ON public.excavation_history FOR INSERT
+WITH CHECK (true);
+
+

@@ -412,6 +412,27 @@ with st.sidebar:
                 st.session_state.nav_page = "🏠 Welcome Hub"
             st.rerun()
 
+    # 📜 Persistent History Section from Supabase
+    st.markdown("---")
+    st.markdown("### 📜 Past Query History")
+    try:
+        sb_inst = SupabaseVectorStore()
+        if sb_inst.is_configured():
+            history_records = sb_inst.get_recent_history(limit=5)
+            if history_records:
+                for h in history_records:
+                    q_text = h.get("question", "Query")
+                    with st.expander(f"💬 {q_text[:30]}..."):
+                        st.caption(f"📁 **Repo:** `{h.get('repo_url', 'Unknown')}`")
+                        st.caption(f"🕒 **Time:** {h.get('created_at', '')[:16]}")
+                        st.markdown(f"**Answer:**\n{h.get('answer', '')}")
+            else:
+                st.caption("No past questions logged yet.")
+        else:
+            st.caption("Connect Supabase to persist Q&A history.")
+    except Exception:
+        pass
+
 if st.session_state.nav_page == "🏠 Welcome Hub":
     # Main Hero Header
     st.markdown('<div class="hero-title">The Codebase Archaeologist</div>', unsafe_allow_html=True)
@@ -506,6 +527,14 @@ elif st.session_state.nav_page == "⛏️ Excavation Workspace" and st.session_s
                     "content": answer,
                     "evidence": results
                 })
+
+                # Save Q&A to Supabase persistent history
+                try:
+                    sb_store = SupabaseVectorStore()
+                    repo_target = st.session_state.get("repo_input_val", "Unknown")
+                    sb_store.save_query_history(repo_target, query, answer)
+                except Exception:
+                    pass
                 
         # Side-by-Side Comparison of last search results
         if st.session_state.last_results:

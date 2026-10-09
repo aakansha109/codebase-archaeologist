@@ -98,3 +98,33 @@ class SupabaseVectorStore:
         """Clears local chunk cache."""
         self.chunks = {}
         self.lineage_map = {}
+
+    def save_query_history(self, repo_url: str, question: str, answer: str) -> bool:
+        """Saves a user question and synthesized architectural answer into Supabase excavation_history table."""
+        if not self.is_configured():
+            return False
+        endpoint = f"{self.supabase_url}/rest/v1/excavation_history"
+        record = {
+            "repo_url": repo_url,
+            "question": question,
+            "answer": answer[:5000]
+        }
+        try:
+            res = requests.post(endpoint, headers=self.headers, json=[record], timeout=8)
+            return res.status_code in (200, 201)
+        except Exception as e:
+            print(f"Notice saving history to Supabase: {e}")
+            return False
+
+    def get_recent_history(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Retrieves recent questions and answers from Supabase excavation_history table."""
+        if not self.is_configured():
+            return []
+        endpoint = f"{self.supabase_url}/rest/v1/excavation_history?select=id,repo_url,question,answer,created_at&order=created_at.desc&limit={limit}"
+        try:
+            res = requests.get(endpoint, headers={"apikey": self.supabase_key, "Authorization": f"Bearer {self.supabase_key}"}, timeout=8)
+            if res.status_code == 200:
+                return res.json()
+        except Exception as e:
+            print(f"Notice fetching history from Supabase: {e}")
+        return []
