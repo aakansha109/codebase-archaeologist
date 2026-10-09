@@ -43,6 +43,7 @@ RETURNS TABLE (
     similarity FLOAT
 )
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 BEGIN
     RETURN QUERY
