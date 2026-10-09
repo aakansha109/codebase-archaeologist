@@ -65,3 +65,17 @@ BEGIN
     LIMIT match_count;
 END;
 $$;
+
+-- Enable Row Level Security (RLS) and define access policies
+ALTER TABLE public.code_chunks ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read access" ON public.code_chunks;
+CREATE POLICY "Allow public read access"
+ON public.code_chunks FOR SELECT
+USING (true);
+
+DROP POLICY IF EXISTS "Allow public insert access" ON public.code_chunks;
+CREATE POLICY "Allow public insert access"
+ON public.code_chunks FOR INSERT
+WITH CHECK (true);
+
