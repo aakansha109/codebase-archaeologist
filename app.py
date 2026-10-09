@@ -5,8 +5,17 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 import streamlit as st
 import pandas as pd
 import altair as alt
+import os
+try:
+    for k, v in getattr(st, "secrets", {}).items():
+        if isinstance(v, str) and k not in os.environ:
+            os.environ[k] = v
+except Exception:
+    pass
+
 from archaeologist.query.retriever import CodebaseRetriever
 from archaeologist.query.synthesizer import CodeArchaeologistSynthesizer
+from archaeologist.store.supabase_store import SupabaseVectorStore
 
 st.set_page_config(
     page_title="The Codebase Archaeologist",
@@ -280,6 +289,17 @@ with st.sidebar:
                 )
                 st.session_state.stats = stats
                 st.session_state.ingested = True
+                
+                # Cloud sync to Supabase pgvector if credentials configured
+                try:
+                    sb_store = SupabaseVectorStore()
+                    if sb_store.is_configured():
+                        sb_chunks = list(st.session_state.retriever.store.chunks.values())
+                        sb_store.ingest_chunks(sb_chunks, st.session_state.retriever.store.lineage_map)
+                        st.session_state.supabase_synced = len(sb_chunks)
+                except Exception as sb_err:
+                    print(f"Supabase sync notice: {sb_err}")
+
                 # Clear stale cache and logs from previous repository excavations
                 st.session_state.pop("briefing", None)
                 st.session_state.chat_history = []
