@@ -26,7 +26,7 @@ Traditional "Chat with your Code" tools treat source code like plain prose text�
 
 ---
 
-## 🏛️ System Architecture
+##  System Architecture
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -69,36 +69,36 @@ Traditional "Chat with your Code" tools treat source code like plain prose text�
 
 ## ✨ Core Engineering Highlights
 
-### 🔬 1. AST-Aware Code Parsing & Dependency Graphs
+###  1. AST-Aware Code Parsing & Dependency Graphs
 * Replaces naive fixed-token chunking with structural AST parsing.
 * Extracts classes, methods, docstrings, argument signatures, and line boundaries for Python, JavaScript, TypeScript, Go, Rust, Java, and C/C++.
 * Automatically constructs caller/callee dependency graphs (`dependency_graph.py`) to map function interactions across modules.
 
-### ⏳ 2. Git Lineage Mining & Line-Range Blame
+###  2. Git Lineage Mining & Line-Range Blame
 * Performs historical git diff mining and line-range blame tracing (`git log -L <start>,<end>:<file>`).
 * Maps current functions to their exact origins, authorship history, and evolution rationale.
 
-### 🔀 3. Two-Stage Hybrid Retrieval & Cross-Encoder Reranking
+###  3. Two-Stage Hybrid Retrieval & Cross-Encoder Reranking
 * **Stage 1 (Hybrid RRF)**: Combines dense vector similarity (Gemini `text-embedding-004` or FastEmbed `BAAI/bge-small-en-v1.5`) with sparse keyword matching (BM25 Okapi) using Reciprocal Rank Fusion ($k=60$).
 * **Stage 2 (Reranking)**: Cross-encoder style term-density scoring and exact symbol overlap boosting ($+0.05$ symbol bonus) to ensure high-precision code retrieval.
 
-### 🔮 4. Hypothetical Document Embeddings (HyDE)
+###  4. Hypothetical Document Embeddings (HyDE)
 * Expands developer questions into hallucinated ideal code snippets before searching, bridging the semantic gap between conceptual natural-language questions and actual implementation syntax.
 
-### 🏥 5. Codebase Health Auditor & Technical Debt Scoring
+###  5. Codebase Health Auditor & Technical Debt Scoring
 * Identifies architectural "god files", hotspots with high churn, orphaned modules with zero callers, and untyped functions.
 * Generates an automated **Codebase Health & Risk Score (0-100)** with prioritized refactoring recommendations.
 
-### ☁️ 6. Cloud Persistence with Supabase `pgvector`
+###  6. Cloud Persistence with Supabase `pgvector`
 * Persists vector embeddings and metadata in Supabase PostgreSQL using 768-dimensional `vector(768)` columns and HNSW cosine similarity search.
 * Logs historical user queries and synthesized architectural answers in `excavation_history` for persistent recall without repeating LLM costs.
 
-### 📊 7. Automated Mermaid.js Architecture Diagrams
+###  7. Automated Mermaid.js Architecture Diagrams
 * Automatically inspects module dependencies and exports live, renderable **Mermaid.js Component Architecture Diagrams**.
 
 ---
 
-## 🛠️ Technology Stack
+##  Technology Stack
 
 | Domain | Technologies |
 | :--- | :--- |
@@ -112,92 +112,14 @@ Traditional "Chat with your Code" tools treat source code like plain prose text�
 
 ---
 
-## 🚀 Quickstart Guide
+##  Quickstart Guide
+Use the Live Web Application
 
-### Option A: Use the Live Web Application
-Visit the live, hosted application without installing anything locally:  
-👉 **[codebase-archaeologists.streamlit.app](https://codebase-archaeologists.streamlit.app/)**
-
----
-
-### Option B: Run Locally
-
-#### 1. Clone the Repository
-```bash
-git clone https://github.com/aakansha109/codebase-archaeologist.git
-cd codebase-archaeologist
-```
-
-#### 2. Create Virtual Environment & Install Dependencies
-```bash
-python -m venv .venv
-# Windows:
-.venv\Scripts\activate
-# macOS/Linux:
-source .venv/bin/activate
-
-pip install -r requirements.txt
-pip install -e .
-```
-
-#### 3. Set Environment Variables
-Create a `.env` file in the project root:
-```env
-GEMINI_API_KEY=your_actual_gemini_api_key
-GEMINI_MODEL=gemini-1.5-flash
-
-# Optional: Supabase Cloud Persistence
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your_supabase_anon_key
-```
-
-#### 4. Launch the Interactive Streamlit App
-```bash
-streamlit run app.py
-```
-Open your browser at `http://localhost:8501`.
+ **[codebase-archaeologists.streamlit.app](https://codebase-archaeologists.streamlit.app/)**
 
 ---
 
-## 💻 Developer CLI Toolkit
-
-The Codebase Archaeologist includes a full-featured CLI:
-
-```bash
-# Ingest and excavate a Git repository
-archaeologist ingest https://github.com/paperclipai/paperclip
-
-# Ask an architectural question
-archaeologist query "How does authentication work?" --top-k 4
-
-# Run a technical debt and codebase health audit
-archaeologist health
-
-# Export a comprehensive Markdown excavation briefing
-archaeologist export --output report.md
-
-# Run RAG Triad benchmark evaluation
-archaeologist eval --question "How does AST parsing work?"
-```
-
----
-
-## ⚡ REST API Server (FastAPI)
-
-Launch the headless production REST API:
-```bash
-uvicorn archaeologist.api.server:app --host 0.0.0.0 --port 8000
-```
-
-Interactive OpenAPI Swagger documentation is available at `http://localhost:8000/docs`:
-* `POST /api/v1/ingest` - Clone, chunk, mine lineage, and index repository
-* `POST /api/v1/query` - Perform HyDE hybrid search and Gemini architectural synthesis
-* `GET /api/v1/health` - Retrieve technical debt risk score and hotspots
-* `GET /api/v1/diagram` - Generate Mermaid.js architecture diagram code
-
----
-
-## 🧪 Automated Test Suite
+##  Automated Test Suite
 
 The codebase maintains automated unit and integration tests across AST parsing, vector stores, git extraction, dependency analysis, and API endpoints:
 
@@ -224,10 +146,3 @@ tests/test_vector_store.py ..... PASSED                                  [100%]
 ======================= 19 passed in 10.40s =======================
 ```
 
----
-
-## 📄 License
-
-Distributed under the MIT License. See `LICENSE` for details.
-
-Developed with ❤️ by [Aakansha Sharma](https://github.com/aakansha109).
