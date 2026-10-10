@@ -1,4 +1,4 @@
-# The Codebase Archaeologist 🏛️🔍
+# The Codebase Archaeologist 🔍
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://codebase-archaeologists.streamlit.app/)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://python.org)
