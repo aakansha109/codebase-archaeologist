@@ -10,11 +10,11 @@
 
 > **An advanced AST-aware Code Intelligence & Architectural Retrieval-Augmented Generation (RAG) platform that excavates entire Git repositories to uncover technical debt, historical lineage, and design evolution.**
 
-👉 **[Launch Live Cloud Application](https://codebase-archaeologists.streamlit.app/)** 🎈
+
 
 ---
 
-## 🌟 Overview
+##  Overview
 
 Traditional "Chat with your Code" tools treat source code like plain prose text—blindly slicing files into arbitrary 500-character windows and losing function boundaries, callers, and historical context.
 
@@ -67,7 +67,7 @@ Traditional "Chat with your Code" tools treat source code like plain prose text�
 
 ---
 
-## ✨ Core Engineering Highlights
+##  Core Engineering Highlights
 
 ###  1. AST-Aware Code Parsing & Dependency Graphs
 * Replaces naive fixed-token chunking with structural AST parsing.
